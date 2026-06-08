@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.database import get_db
 from db.crud import create_session
 from services.file_service import validate_file, save_file, parse_file, get_file_summary
+from services.insight_service import generate_insights
 import uuid
 
 router = APIRouter()
@@ -19,17 +20,17 @@ async def upload_file(
             detail="Only CSV and Excel files are supported"
         )
 
-    #  Generate unique session ID
+    # Generate unique session ID
     session_id = str(uuid.uuid4())
 
     # Save file to disk
     content = await file.read()
     file_path = save_file(session_id, file.filename, content)
 
-    #  Parse file with pandas
+    # Parse file with pandas
     df = parse_file(file_path)
 
-    #  Get file summary
+    # Get file summary
     summary = get_file_summary(df)
 
     # Save session to database
@@ -44,8 +45,12 @@ async def upload_file(
         col_count=summary["col_count"]
     )
 
+    # Auto generate insights 
+    insights = generate_insights(df)
+
     return {
         "session_id": session_id,
         "file_name": file.filename,
-        "summary": summary
+        "summary": summary,
+        "insights": insights   
     }
