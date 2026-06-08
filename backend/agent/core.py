@@ -73,7 +73,7 @@ Rules:
                 result = self.python_exec.func(params)
                 # Ask LLM to explain the result
                 explain = self.llm.invoke([
-                    HumanMessage(content=f"Question: {question}\nCode result: {result}\nGive a brief friendly explanation.")
+                HumanMessage(content=f"Question: {question}\nCode result: {result}\nGive a brief 1-2 sentence friendly answer with just the key numbers. No code, no markdown.")
                 ])
                 return {"output": explain.content}
 

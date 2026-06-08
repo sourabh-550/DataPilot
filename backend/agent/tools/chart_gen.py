@@ -31,7 +31,10 @@ def create_chart_gen_tool(df: pd.DataFrame) -> StructuredTool:
             elif chart_type == "scatter":
                 fig = px.scatter(df, x=x_col, y=y_col, title=title)
             elif chart_type == "pie":
-                fig = px.pie(df, names=x_col, values=y_col, title=title)
+                # For pie, group by x_col and count
+                pie_data = df[x_col].value_counts().reset_index()
+                pie_data.columns = [x_col, 'count']
+                fig = px.pie(pie_data, names=x_col, values='count', title=title)
             elif chart_type == "histogram":
                 fig = px.histogram(df, x=x_col, title=title)
             else:
