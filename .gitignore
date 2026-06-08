@@ -1,13 +1,36 @@
-# Environment
-.env
+# ── Python ──────────────────────────
 venv/
-
-# Uploads
-backend/uploads/
-
-# Python cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
 
-# Node
+# ── Environment Variables ───────────
+.env
+.env.local
+.env.production
+
+# ── Database ────────────────────────
+*.db
+*.sqlite3
+
+# ── Uploaded Files ──────────────────
+backend/uploads/
+
+# ── Node / Frontend ─────────────────
 node_modules/
+dist/
+build/
+
+# ── Logs ────────────────────────────
+*.log
+npm-debug.log*
+
+# ── OS Files ────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── VS Code / Editor ────────────────
+.vscode/
+.idea/

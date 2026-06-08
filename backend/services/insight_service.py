@@ -30,10 +30,10 @@ def generate_insights(df: pd.DataFrame) -> list[str]:
     Returns a list of insight strings.
     """
     llm = ChatGroq(
-        groq_api_key=GROQ_API_KEY,
-        model_name="llama-3.3-70b-versatile",
-        temperature=0.3
-    )
+    groq_api_key=GROQ_API_KEY,
+    model_name="llama-3.1-8b-instant",  
+    temperature=0.3
+)
 
     data_summary = build_data_summary(df)
 

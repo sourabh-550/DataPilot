@@ -1,70 +1,84 @@
 from langchain_groq import ChatGroq
-from langchain.agents import AgentExecutor, create_react_agent
-from langchain.memory import ConversationBufferWindowMemory
-from langchain_core.prompts import PromptTemplate
-from agent.memory import get_memory
+from langchain_core.messages import HumanMessage, SystemMessage
+from agent.tools.python_exec import create_python_exec_tool
+from agent.tools.data_info import create_data_info_tool
+from agent.tools.chart_gen import create_chart_gen_tool
 from config import GROQ_API_KEY
 import pandas as pd
+import json
 
-AGENT_PROMPT = """You are DataPilot, an expert AI data analyst assistant.
-You help users analyze their datasets by answering questions,
-running calculations, and generating visualizations.
-
-You have access to the following tools:
-{tools}
-
-Always follow this process:
-1. Understand what the user wants
-2. Pick the right tool
-3. Use the tool
-4. Give a clear, friendly answer
-
-Use this format:
-Question: the input question
-Thought: think about what to do
-Action: tool name [{tool_names}]
-Action Input: input for the tool
-Observation: tool result
-... (repeat if needed)
-Thought: I have the answer
-Final Answer: your response to the user
-
-Previous conversation:
-{chat_history}
-
-Question: {input}
-Thought: {agent_scratchpad}"""
+def create_agent(df: pd.DataFrame, session_id: str):
+    return SimpleDataAgent(df, session_id)
 
 
-def create_agent(df: pd.DataFrame, session_id: str) -> AgentExecutor:
-    llm = ChatGroq(
-        groq_api_key=GROQ_API_KEY,
-        model_name="llama-3.3-70b-versatile",
-        temperature=0
-    )
+class SimpleDataAgent:
+    def __init__(self, df: pd.DataFrame, session_id: str):
+        self.df = df
+        self.session_id = session_id
+        self.llm = ChatGroq(
+            groq_api_key=GROQ_API_KEY,
+            model_name="llama-3.1-8b-instant",
+            temperature=0
+        )
+        self.data_info = create_data_info_tool(df)
+        self.python_exec = create_python_exec_tool(df)
+        self.chart_gen = create_chart_gen_tool(df)
 
-    from agent.tools import (
-        create_data_info_tool,
-        create_python_exec_tool,
-        create_chart_gen_tool
-    )
+    def invoke(self, inputs: dict) -> dict:
+        question = inputs["input"]
 
-    tools = [
-        create_data_info_tool(df),
-        create_python_exec_tool(df),
-        create_chart_gen_tool(df)
-    ]
+        # Step 1 — get dataset info
+        df_info = self.data_info.func("get info")
 
-    prompt = PromptTemplate.from_template(AGENT_PROMPT)
-    memory = get_memory(session_id)
+        # Step 2 — decide what to do
+        system = f"""You are DataPilot, an AI data analyst.
+Dataset info:
+{df_info}
 
-    agent = create_react_agent(llm=llm, tools=tools, prompt=prompt)
+Respond ONLY with a JSON object in this exact format:
+{{"action": "chart", "params": "bar|product|price|Price by Product"}}
+or
+{{"action": "code", "params": "result = df['price'].sum()"}}
+or
+{{"action": "answer", "params": "your direct answer here"}}
 
-    return AgentExecutor(
-        agent=agent,
-        tools=tools,
-        memory=memory,
-        verbose=True,
-        handle_parsing_errors=True,
-        max_iterations=5
-    )
+Rules:
+- Use "chart" when user wants visualization/chart/graph/plot
+- Use "code" when user wants calculations/statistics/analysis
+- Use "answer" for simple questions about the data
+- For chart params format: chart_type|x_column|y_column|title
+- For code params: valid pandas code, store output in 'result' variable
+- Return ONLY the JSON, nothing else"""
+
+        response = self.llm.invoke([
+            SystemMessage(content=system),
+            HumanMessage(content=question)
+        ])
+
+        # Step 3 — parse and execute
+        try:
+            raw = response.content.strip()
+            raw = raw.replace("```json", "").replace("```", "").strip()
+            decision = json.loads(raw)
+            action = decision.get("action")
+            params = decision.get("params")
+
+            if action == "chart":
+                result = self.chart_gen.func(params)
+                if "CHART_JSON:" in result:
+                    return {"output": f"CHART_JSON:{result.split('CHART_JSON:')[1]}"}
+                return {"output": result}
+
+            elif action == "code":
+                result = self.python_exec.func(params)
+                # Ask LLM to explain the result
+                explain = self.llm.invoke([
+                    HumanMessage(content=f"Question: {question}\nCode result: {result}\nGive a brief friendly explanation.")
+                ])
+                return {"output": explain.content}
+
+            else:
+                return {"output": params}
+
+        except Exception as e:
+            return {"output": f"Sorry, I could not process that. Error: {str(e)}"}
