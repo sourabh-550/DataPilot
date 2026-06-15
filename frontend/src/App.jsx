@@ -1,14 +1,20 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "./context/ThemeContext";
+import { ToastProvider } from "./context/ToastContext";
 import UploadPage from "./pages/UploadPage";
 import ChatPage from "./pages/ChatPage";
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<UploadPage />} />
-        <Route path="/chat" element={<ChatPage />} />
-      </Routes>
-    </BrowserRouter>
+    <ThemeProvider>
+      <ToastProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<UploadPage />} />
+            <Route path="/chat" element={<ChatPage />} />
+          </Routes>
+        </BrowserRouter>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }

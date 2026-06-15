@@ -1,12 +1,19 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import DashboardLayout from "../components/layout/DashboardLayout";
 import ChatBox from "../components/ChatBox";
 import InsightCard from "../components/InsightCard";
+import DatasetOverview from "../components/DatasetOverview";
+import ColumnList from "../components/ColumnList";
+import Card, { CardHeader } from "../components/ui/Card";
+import Badge from "../components/ui/Badge";
+import { ChatIcon, FileIcon } from "../components/ui/Icons";
 
 export default function ChatPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const sessionData = location.state?.sessionData;
+  const [columnSearch, setColumnSearch] = useState("");
 
   useEffect(() => {
     if (!sessionData) navigate("/");
@@ -17,61 +24,53 @@ export default function ChatPage() {
   const { session_id, file_name, summary, insights } = sessionData;
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
-      {/* Navbar */}
-      <nav className="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
-        <h1 className="text-white font-bold text-xl">
-          Data<span className="text-blue-500">Pilot</span>
-        </h1>
-        <div className="flex items-center gap-4">
-          <span className="text-gray-400 text-sm">📄 {file_name}</span>
-          <span className="text-gray-500 text-xs">
-            {summary.row_count} rows × {summary.col_count} cols
-          </span>
-          <button
-            onClick={() => navigate("/")}
-            className="text-sm text-blue-400 hover:text-blue-300 transition"
-          >
-            Upload New File
-          </button>
-        </div>
-      </nav>
+    <DashboardLayout
+      title={file_name}
+      subtitle={`${summary.row_count.toLocaleString()} rows · ${summary.col_count} columns`}
+      sessionId={session_id}
+      searchValue={columnSearch}
+      onSearchChange={setColumnSearch}
+    >
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+        <section className="animate-fade-in-up">
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <Badge variant="success">Active Session</Badge>
+            <Badge variant="muted">
+              <FileIcon className="w-3 h-3 inline mr-1" />
+              {file_name.split(".").pop()?.toUpperCase()}
+            </Badge>
+          </div>
+          <DatasetOverview summary={summary} />
+        </section>
 
-      {/* Main Layout */}
-      <div className="flex flex-1 overflow-hidden p-4 gap-4">
-        {/* Left Sidebar */}
-        <div className="w-80 flex-shrink-0 overflow-y-auto space-y-4">
-          {/* Dataset Info */}
-          <div className="bg-gray-900 rounded-2xl p-5">
-            <h2 className="text-white font-semibold text-sm mb-3 uppercase tracking-wider">
-              📊 Dataset Info
-            </h2>
-            <div className="space-y-2">
-              {summary.columns.map((col) => (
-                <div key={col.name} className="bg-gray-800 rounded-xl p-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-white text-sm font-medium">{col.name}</span>
-                    <span className="text-xs text-blue-400 bg-blue-950 px-2 py-0.5 rounded-full">
-                      {col.dtype}
-                    </span>
-                  </div>
-                  {col.null_count > 0 && (
-                    <p className="text-red-400 text-xs mt-1">⚠ {col.null_count} nulls</p>
-                  )}
-                </div>
-              ))}
-            </div>
+        <div className="grid lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-4 space-y-6">
+            <ColumnList columns={summary.columns} search={columnSearch} />
+            {insights?.length > 0 && <InsightCard insights={insights} />}
           </div>
 
-          {/* Insights */}
-          {insights?.length > 0 && <InsightCard insights={insights} />}
-        </div>
-
-        {/* Right — Chat */}
-        <div className="flex-1 bg-gray-900 rounded-2xl p-5 flex flex-col overflow-hidden">
-          <ChatBox sessionId={session_id} />
+          <div className="lg:col-span-8">
+            <Card padding className="h-[calc(100vh-280px)] min-h-[560px] flex flex-col animate-fade-in-up stagger-2">
+              <CardHeader
+                title="AI Chat"
+                subtitle="Ask questions about your dataset"
+                icon={ChatIcon}
+                action={
+                  <button
+                    onClick={() => navigate("/")}
+                    className="btn-ghost text-xs"
+                  >
+                    New upload
+                  </button>
+                }
+              />
+              <div className="flex-1 min-h-0">
+                <ChatBox sessionId={session_id} />
+              </div>
+            </Card>
+          </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
