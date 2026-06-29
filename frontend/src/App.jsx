@@ -12,6 +12,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<UploadPage />} />
             <Route path="/chat" element={<ChatPage />} />
+             <Route path="/sql" element={<SQLPage />} />
           </Routes>
         </BrowserRouter>
       </ToastProvider>

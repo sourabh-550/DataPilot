@@ -85,6 +85,13 @@ export default function UploadPage() {
         </section>
 
         <FileUpload onUpload={handleUpload} loading={loading} progress={progress} />
+                {/* SQL Mode Button */}
+        <button
+          onClick={() => navigate("/sql")}
+          className="mt-6 flex items-center gap-2 text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 px-6 py-3 rounded-xl transition"
+        >
+          🗄️ <span>Switch to SQL Mode</span>
+        </button>
 
         <section className="grid sm:grid-cols-3 gap-4">
           {FEATURES.map((feature, i) => (

@@ -32,3 +32,27 @@ export const getChatHistory = async (sessionId) => {
   const response = await api.get(`/chat/history/${sessionId}`);
   return response.data;
 };
+
+// ── SQL APIs ──────────────────────────────────────────────────
+
+export const uploadSQLiteDB = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await api.post("/sql/upload-db", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data;
+};
+
+export const connectSQLDB = async (connectionData) => {
+  const response = await api.post("/sql/connect", connectionData);
+  return response.data;
+};
+
+export const sendSQLMessage = async (sessionId, message) => {
+  const response = await api.post("/sql/chat", {
+    session_id: sessionId,
+    message: message,
+  });
+  return response.data;
+};

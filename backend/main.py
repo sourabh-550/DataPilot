@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from db.database import engine, Base
 from api.upload import router as upload_router
-from api.chat import router as chat_router        # ← ADD THIS
+from api.sql import router as sql_router
+from api.chat import router as chat_router       
 import os
 from config import UPLOAD_DIR
 
@@ -30,7 +31,8 @@ app.add_middleware(
 )
 
 app.include_router(upload_router, prefix="/api", tags=["Upload"])
-app.include_router(chat_router, prefix="/api", tags=["Chat"])   # ← ADD THIS
+app.include_router(chat_router, prefix="/api", tags=["Chat"])  
+app.include_router(sql_router, prefix="/api", tags=["SQL"])
 
 @app.get("/")
 async def root():
