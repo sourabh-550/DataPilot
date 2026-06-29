@@ -3,6 +3,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { ToastProvider } from "./context/ToastContext";
 import UploadPage from "./pages/UploadPage";
 import ChatPage from "./pages/ChatPage";
+import SQLPage from "./pages/SQLPage";   
 
 export default function App() {
   return (
@@ -12,7 +13,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<UploadPage />} />
             <Route path="/chat" element={<ChatPage />} />
-             <Route path="/sql" element={<SQLPage />} />
+            <Route path="/sql" element={<SQLPage />} />
           </Routes>
         </BrowserRouter>
       </ToastProvider>
