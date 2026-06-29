@@ -1,16 +1,16 @@
 export default function Badge({ children, variant = "default", className = "" }) {
   const variants = {
-    default: "bg-indigo-500/15 text-indigo-300 border-indigo-500/20",
-    success: "bg-emerald-500/15 text-emerald-300 border-emerald-500/20",
-    warning: "bg-amber-500/15 text-amber-300 border-amber-500/20",
-    danger: "bg-red-500/15 text-red-300 border-red-500/20",
-    muted: "bg-surface-overlay text-content-muted border-border-subtle",
+    default: "badge-primary",
+    primary: "badge-primary",
+    success: "badge-success",
+    warning: "badge-warning",
+    danger: "badge-danger",
+    cyan: "badge-cyan",
+    muted: "badge-muted",
   };
 
   return (
-    <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-medium border ${variants[variant]} ${className}`}
-    >
+    <span className={`${variants[variant] || "badge-muted"} ${className}`}>
       {children}
     </span>
   );

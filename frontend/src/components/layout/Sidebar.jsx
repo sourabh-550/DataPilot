@@ -1,150 +1,259 @@
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
-  LogoIcon,
-  PlusIcon,
-  DatabaseIcon,
-  ChatIcon,
-  SettingsIcon,
-  CloseIcon,
-} from "../ui/Icons";
-import { useLocalStorage } from "../../hooks/useLocalStorage";
-import { truncate, timeAgo } from "../../utils/formatters";
+  LayoutDashboard,
+  Upload,
+  Table2,
+  MessageSquare,
+  Code2,
+  BarChart3,
+  FileText,
+  History,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Zap,
+  Database,
+  X,
+} from "lucide-react";
 
-export default function Sidebar({ isOpen, onClose, currentSessionId }) {
+const NAV_ITEMS = [
+  { label: "Dashboard", icon: LayoutDashboard, path: "/" },
+  { label: "Upload Dataset", icon: Upload, path: "/upload" },
+  { label: "Data Explorer", icon: Table2, path: "/explorer" },
+  { label: "AI Chat", icon: MessageSquare, path: "/chat" },
+  { label: "SQL Workspace", icon: Code2, path: "/sql" },
+  { label: "Visualizations", icon: BarChart3, path: "/visualizations" },
+  { label: "Reports", icon: FileText, path: "/reports" },
+  { label: "History", icon: History, path: "/history" },
+];
+
+const BOTTOM_NAV = [
+  { label: "Settings", icon: Settings, path: "/settings" },
+];
+
+export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }) {
   const navigate = useNavigate();
-  const [history] = useLocalStorage("datapilot-datasets", []);
+  const location = useLocation();
+  const [history, setHistory] = useState([]);
 
-  const navItemClass = (active) =>
-    `w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-      active
-        ? "bg-indigo-500/15 text-indigo-300 border border-indigo-500/20"
-        : "text-content-muted hover:text-content hover:bg-surface-overlay/60"
-    }`;
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("datapilot-datasets") || "[]");
+      setHistory(stored.slice(0, 5));
+    } catch { setHistory([]); }
+  }, []);
+
+  const handleNavigate = (path) => {
+    navigate(path);
+    onClose?.();
+  };
+
+  const isActive = (path) => {
+    if (path === "/" && location.pathname === "/") return true;
+    if (path !== "/" && location.pathname.startsWith(path)) return true;
+    return false;
+  };
+
+  const sidebarContent = (
+    <div className="flex flex-col h-full">
+      {/* ── Logo ── */}
+      <div className="flex items-center justify-between px-4 py-5 border-b border-zinc-800/60 shrink-0">
+        <motion.button
+          onClick={() => handleNavigate("/")}
+          className="flex items-center gap-3 group"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-glow-sm shrink-0">
+            <Zap className="w-5 h-5 text-white" />
+          </div>
+          <AnimatePresence mode="wait">
+            {!collapsed && (
+              <motion.div
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: "auto" }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <span className="font-bold text-white text-lg tracking-tight whitespace-nowrap">
+                  Data<span className="gradient-text">Pilot</span>
+                </span>
+                <p className="text-[10px] text-zinc-500 uppercase tracking-widest whitespace-nowrap">
+                  Analytics AI
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.button>
+
+        {/* Mobile close / Desktop collapse */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onClose}
+            className="lg:hidden btn-ghost p-1.5 rounded-lg"
+            aria-label="Close sidebar"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onToggleCollapse}
+            className="hidden lg:flex btn-ghost p-1.5 rounded-lg"
+            aria-label="Toggle sidebar"
+          >
+            {collapsed
+              ? <ChevronRight className="w-4 h-4" />
+              : <ChevronLeft className="w-4 h-4" />
+            }
+          </button>
+        </div>
+      </div>
+
+      {/* ── New Analysis Button ── */}
+      <div className={`px-3 py-4 shrink-0 ${collapsed ? "flex justify-center" : ""}`}>
+        <motion.button
+          onClick={() => handleNavigate("/upload")}
+          className={`btn-primary ${collapsed ? "!px-2.5 !py-2.5 !rounded-xl" : "w-full"}`}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+        >
+          <Plus className="w-4 h-4 shrink-0" />
+          {!collapsed && <span>New Analysis</span>}
+        </motion.button>
+      </div>
+
+      {/* ── Navigation ── */}
+      <nav className="flex-1 overflow-y-auto px-3 pb-4 space-y-1 scrollbar-thin">
+        {!collapsed && (
+          <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest px-3 mb-2 mt-1">
+            Navigation
+          </p>
+        )}
+
+        {NAV_ITEMS.map((item) => {
+          const active = isActive(item.path);
+          return (
+            <motion.button
+              key={item.path}
+              onClick={() => handleNavigate(item.path)}
+              className={`nav-item ${active ? "active" : ""} ${collapsed ? "justify-center !px-2.5" : ""}`}
+              whileHover={{ x: collapsed ? 0 : 2 }}
+              whileTap={{ scale: 0.97 }}
+              title={collapsed ? item.label : undefined}
+            >
+              <item.icon className="w-4 h-4 shrink-0" />
+              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && active && (
+                <motion.div
+                  layoutId="activeIndicator"
+                  className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400"
+                />
+              )}
+            </motion.button>
+          );
+        })}
+
+        {/* ── Recent Datasets ── */}
+        {!collapsed && history.length > 0 && (
+          <div className="mt-6">
+            <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest px-3 mb-2">
+              Recent Datasets
+            </p>
+            {history.map((item) => (
+              <motion.button
+                key={item.session_id}
+                onClick={() => {
+                  navigate("/chat", { state: { sessionData: item } });
+                  onClose?.();
+                }}
+                className="nav-item w-full"
+                whileHover={{ x: 2 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <div className="w-4 h-4 rounded bg-indigo-500/20 flex items-center justify-center shrink-0">
+                  <Database className="w-2.5 h-2.5 text-indigo-400" />
+                </div>
+                <div className="text-left min-w-0 flex-1">
+                  <p className="truncate text-xs">{item.file_name}</p>
+                  <p className="text-[10px] text-zinc-600">
+                    {item.summary?.row_count?.toLocaleString()} rows
+                  </p>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        )}
+      </nav>
+
+      {/* ── Bottom: Settings + User ── */}
+      <div className={`px-3 py-4 border-t border-zinc-800/60 space-y-1 shrink-0`}>
+        {BOTTOM_NAV.map((item) => (
+          <motion.button
+            key={item.path}
+            onClick={() => handleNavigate(item.path)}
+            className={`nav-item ${isActive(item.path) ? "active" : ""} ${collapsed ? "justify-center !px-2.5" : ""}`}
+            whileHover={{ x: collapsed ? 0 : 2 }}
+            whileTap={{ scale: 0.97 }}
+            title={collapsed ? item.label : undefined}
+          >
+            <item.icon className="w-4 h-4 shrink-0" />
+            {!collapsed && <span>{item.label}</span>}
+          </motion.button>
+        ))}
+
+        {/* User Card */}
+        <div className={`flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl bg-zinc-900/60 border border-zinc-800/60 ${collapsed ? "justify-center px-0" : ""}`}>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-glow-sm">
+            A
+          </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-white truncate">Analyst</p>
+              <p className="text-[10px] text-zinc-500">Pro Plan</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <>
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
-          onClick={onClose}
-          aria-hidden="true"
-        />
-      )}
-
-      <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-72 flex flex-col glass-strong border-r border-border-subtle/60 transform transition-transform duration-300 lg:translate-x-0 ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-        aria-label="Main navigation"
-      >
-        <div className="flex items-center justify-between p-5 border-b border-border-subtle/60">
-          <button
-            onClick={() => { navigate("/"); onClose(); }}
-            className="flex items-center gap-3 group"
-            aria-label="Go to home"
-          >
-            <LogoIcon />
-            <div className="text-left">
-              <span className="font-bold text-content text-lg tracking-tight">
-                Data<span className="gradient-text">Pilot</span>
-              </span>
-              <p className="text-[10px] text-content-subtle uppercase tracking-widest">Analytics AI</p>
-            </div>
-          </button>
-          <button
+      {/* Mobile overlay */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden"
             onClick={onClose}
-            className="lg:hidden btn-ghost p-2"
-            aria-label="Close sidebar"
-          >
-            <CloseIcon />
-          </button>
-        </div>
+          />
+        )}
+      </AnimatePresence>
 
-        <div className="p-4">
-          <button
-            onClick={() => { navigate("/"); onClose(); }}
-            className="btn-primary w-full"
-          >
-            <PlusIcon />
-            New Analysis
-          </button>
-        </div>
+      {/* Mobile Sidebar */}
+      <motion.aside
+        initial={false}
+        animate={{ x: isOpen ? 0 : "-100%" }}
+        transition={{ type: "spring", damping: 28, stiffness: 280 }}
+        className="fixed inset-y-0 left-0 z-50 w-72 glass-strong border-r border-zinc-800/60 lg:hidden"
+      >
+        {sidebarContent}
+      </motion.aside>
 
-        <nav className="flex-1 overflow-y-auto px-4 space-y-6">
-          <div>
-            <p className="text-[11px] font-semibold text-content-subtle uppercase tracking-wider px-3 mb-2">
-              Dataset History
-            </p>
-            {history.length === 0 ? (
-              <p className="text-xs text-content-subtle px-3 py-2">No datasets yet</p>
-            ) : (
-              <ul className="space-y-1">
-                {history.slice(0, 8).map((item) => (
-                  <li key={item.session_id}>
-                    <button
-                      onClick={() => {
-                        navigate("/chat", { state: { sessionData: item } });
-                        onClose();
-                      }}
-                      className={navItemClass(currentSessionId === item.session_id)}
-                    >
-                      <DatabaseIcon className="shrink-0" />
-                      <div className="text-left min-w-0">
-                        <p className="truncate">{truncate(item.file_name, 22)}</p>
-                        <p className="text-[10px] text-content-subtle">
-                          {item.summary?.row_count?.toLocaleString()} rows · {timeAgo(item.uploadedAt)}
-                        </p>
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div>
-            <p className="text-[11px] font-semibold text-content-subtle uppercase tracking-wider px-3 mb-2">
-              Recent Conversations
-            </p>
-            {history.length === 0 ? (
-              <p className="text-xs text-content-subtle px-3 py-2">Start by uploading data</p>
-            ) : (
-              <ul className="space-y-1">
-                {history.slice(0, 5).map((item) => (
-                  <li key={`chat-${item.session_id}`}>
-                    <button
-                      onClick={() => {
-                        navigate("/chat", { state: { sessionData: item } });
-                        onClose();
-                      }}
-                      className={navItemClass(currentSessionId === item.session_id)}
-                    >
-                      <ChatIcon className="shrink-0" />
-                      <span className="truncate">{truncate(item.file_name, 24)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </nav>
-
-        <div className="p-4 border-t border-border-subtle/60 space-y-1">
-          <button className={navItemClass(false)}>
-            <SettingsIcon />
-            Settings
-          </button>
-          <div className="flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl bg-surface-overlay/40">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold">
-              DP
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-content truncate">Analyst</p>
-              <p className="text-[10px] text-content-subtle">Free Plan</p>
-            </div>
-          </div>
-        </div>
-      </aside>
+      {/* Desktop Sidebar */}
+      <motion.aside
+        animate={{ width: collapsed ? 68 : 264 }}
+        transition={{ type: "spring", damping: 30, stiffness: 300 }}
+        className="hidden lg:flex flex-col glass-strong border-r border-zinc-800/60 h-screen sticky top-0 overflow-hidden shrink-0"
+      >
+        {sidebarContent}
+      </motion.aside>
     </>
   );
 }

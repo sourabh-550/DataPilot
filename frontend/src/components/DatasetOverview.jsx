@@ -1,5 +1,5 @@
 import StatCard from "./StatCard";
-import { RowsIcon, ColumnsIcon, AlertIcon, SizeIcon } from "./ui/Icons";
+import { Rows, Columns, AlertTriangle, HardDrive } from "lucide-react";
 import { formatNumber, getTotalMissingValues, estimateDatasetSize } from "../utils/formatters";
 
 export default function DatasetOverview({ summary }) {
@@ -8,18 +8,10 @@ export default function DatasetOverview({ summary }) {
   const missing = getTotalMissingValues(summary.columns);
 
   const stats = [
-    { label: "Total Rows", value: formatNumber(summary.row_count), icon: RowsIcon },
-    { label: "Total Columns", value: formatNumber(summary.col_count), icon: ColumnsIcon },
-    {
-      label: "Missing Values",
-      value: formatNumber(missing),
-      icon: AlertIcon,
-    },
-    {
-      label: "Est. Size",
-      value: estimateDatasetSize(summary.row_count, summary.col_count),
-      icon: SizeIcon,
-    },
+    { label: "Total Rows", value: formatNumber(summary.row_count), icon: Rows },
+    { label: "Total Columns", value: formatNumber(summary.col_count), icon: Columns },
+    { label: "Missing Values", value: formatNumber(missing), icon: AlertTriangle },
+    { label: "Est. Size", value: estimateDatasetSize(summary.row_count, summary.col_count), icon: HardDrive },
   ];
 
   return (

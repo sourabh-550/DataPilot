@@ -1,43 +1,48 @@
-import Card, { CardHeader } from "./ui/Card";
-import Badge from "./ui/Badge";
-import { SparklesIcon, INSIGHT_ICONS } from "./ui/Icons";
+import { motion } from "framer-motion";
+import { Sparkles, TrendingUp, BarChart3, Database, Lightbulb } from "lucide-react";
 
-const BADGE_VARIANTS = ["default", "success", "warning", "default", "success"];
+const ICONS = [Sparkles, TrendingUp, BarChart3, Database, Lightbulb];
+const COLORS = [
+  { bg: "bg-indigo-500/10", border: "border-indigo-500/20", text: "text-indigo-400", badge: "badge-primary" },
+  { bg: "bg-emerald-500/10", border: "border-emerald-500/20", text: "text-emerald-400", badge: "badge-success" },
+  { bg: "bg-violet-500/10", border: "border-violet-500/20", text: "text-violet-400", badge: "badge-primary" },
+  { bg: "bg-cyan-500/10", border: "border-cyan-500/20", text: "text-cyan-400", badge: "badge-cyan" },
+  { bg: "bg-amber-500/10", border: "border-amber-500/20", text: "text-amber-400", badge: "badge-warning" },
+];
 
 export default function InsightCard({ insights }) {
   if (!insights?.length) return null;
 
   return (
-    <Card className="animate-fade-in-up stagger-3">
-      <CardHeader
-        title="AI Insights"
-        subtitle={`${insights.length} findings from your data`}
-        icon={SparklesIcon}
-        action={<Badge variant="success">Auto-generated</Badge>}
-      />
-
-      <div className="space-y-3">
+    <div className="card rounded-2xl overflow-hidden">
+      <div className="px-4 py-3 border-b border-zinc-800/60 flex items-center gap-2">
+        <Sparkles className="w-4 h-4 text-indigo-400" />
+        <span className="text-sm font-semibold text-white">AI Insights</span>
+        <span className="badge-success ml-auto text-[10px]">{insights.length} found</span>
+      </div>
+      <div className="p-3 space-y-2 max-h-72 overflow-y-auto scrollbar-thin">
         {insights.map((insight, i) => {
-          const Icon = INSIGHT_ICONS[i % INSIGHT_ICONS.length];
+          const Icon = ICONS[i % ICONS.length];
+          const color = COLORS[i % COLORS.length];
           return (
-            <div
+            <motion.div
               key={i}
-              className="flex items-start gap-3 p-4 rounded-xl bg-surface-overlay/40 border border-border-subtle/40 hover:border-indigo-500/20 transition-all duration-200 animate-fade-in-up"
-              style={{ animationDelay: `${i * 0.08}s` }}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.06 }}
+              className={`flex items-start gap-3 p-3 rounded-xl ${color.bg} border ${color.border}`}
             >
-              <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
-                <Icon className="w-4 h-4" />
+              <div className={`w-7 h-7 rounded-lg ${color.bg} flex items-center justify-center shrink-0`}>
+                <Icon className={`w-3.5 h-3.5 ${color.text}`} />
               </div>
-              <div className="flex-1 min-w-0">
-                <Badge variant={BADGE_VARIANTS[i % BADGE_VARIANTS.length]} className="mb-2">
-                  Insight {i + 1}
-                </Badge>
-                <p className="text-sm text-content-muted leading-relaxed">{insight}</p>
+              <div>
+                <span className={`${color.badge} text-[10px] mb-1`}>Insight {i + 1}</span>
+                <p className="text-xs text-zinc-400 leading-relaxed">{insight}</p>
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
-    </Card>
+    </div>
   );
 }

@@ -1,8 +1,10 @@
+import { motion } from "framer-motion";
+
 export default function Card({ children, className = "", hover = false, padding = true }) {
   return (
     <div
-      className={`glass rounded-2xl ${padding ? "p-5" : ""} shadow-card transition-all duration-300 ${
-        hover ? "hover:shadow-card-hover hover:border-border/80" : ""
+      className={`card ${padding ? "p-5" : ""} ${
+        hover ? "card-hover cursor-pointer" : ""
       } ${className}`}
     >
       {children}
@@ -20,8 +22,8 @@ export function CardHeader({ title, subtitle, action, icon: Icon }) {
           </div>
         )}
         <div>
-          <h3 className="text-sm font-semibold text-content">{title}</h3>
-          {subtitle && <p className="text-xs text-content-muted mt-0.5">{subtitle}</p>}
+          <h3 className="text-sm font-semibold text-white">{title}</h3>
+          {subtitle && <p className="text-xs text-zinc-500 mt-0.5">{subtitle}</p>}
         </div>
       </div>
       {action}
