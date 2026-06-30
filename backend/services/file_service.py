@@ -24,10 +24,32 @@ def save_file(session_id: str, filename: str, content: bytes) -> str:
 
 def parse_file(file_path: str) -> pd.DataFrame:
     ext = os.path.splitext(file_path)[1].lower()
+
     if ext == ".csv":
-        return pd.read_csv(file_path)
+        encodings = [
+            "utf-8",
+            "utf-8-sig",
+            "cp1252",
+            "latin1",
+            "ISO-8859-1",
+        ]
+
+        last_error = None
+
+        for encoding in encodings:
+            try:
+                return pd.read_csv(file_path, encoding=encoding)
+            except UnicodeDecodeError as e:
+                last_error = e
+                continue
+
+        raise ValueError(
+            f"Unable to read CSV file. Unsupported encoding. Last error: {last_error}"
+        )
+
     elif ext in [".xlsx", ".xls"]:
         return pd.read_excel(file_path)
+
     raise ValueError(f"Unsupported file type: {ext}")
 
 
