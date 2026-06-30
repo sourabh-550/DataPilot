@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
+import { useAuth } from "../../context/AuthContext";
 
 const NOTIFICATIONS = [
   { id: 1, title: "Analysis Complete", desc: "sales_data.xlsx processed", time: "2m ago", unread: true, color: "text-indigo-400", bg: "bg-indigo-500/10" },
@@ -25,8 +26,15 @@ const NOTIFICATIONS = [
 
 export default function TopNavbar({ title, subtitle, onMenuClick }) {
   const { theme, toggleTheme } = useTheme();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Derive initials and email from Supabase user
+  const userEmail = user?.email ?? "analyst@datapilot.ai";
+  const userInitial = userEmail.charAt(0).toUpperCase();
+  const userName = user?.user_metadata?.full_name ?? userEmail.split("@")[0];
+
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [notifOpen, setNotifOpen] = useState(false);
@@ -34,6 +42,12 @@ export default function TopNavbar({ title, subtitle, onMenuClick }) {
   const searchRef = useRef(null);
   const notifRef = useRef(null);
   const profileRef = useRef(null);
+
+  const handleSignOut = async () => {
+    setProfileOpen(false);
+    await signOut();
+    navigate("/login");
+  };
 
   const unreadCount = NOTIFICATIONS.filter(n => n.unread).length;
 
@@ -211,9 +225,9 @@ export default function TopNavbar({ title, subtitle, onMenuClick }) {
             className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl border border-zinc-800 hover:border-zinc-700 transition-all"
           >
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold shadow-glow-sm">
-              A
+              {userInitial}
             </div>
-            <span className="text-xs font-medium text-zinc-300 hidden sm:block">Analyst</span>
+            <span className="text-xs font-medium text-zinc-300 hidden sm:block">{userName}</span>
             <ChevronDown className="w-3 h-3 text-zinc-500 hidden sm:block" />
           </button>
 
@@ -227,13 +241,13 @@ export default function TopNavbar({ title, subtitle, onMenuClick }) {
                 className="absolute right-0 top-full mt-2 w-52 glass-strong border border-zinc-800 rounded-2xl shadow-card overflow-hidden z-50"
               >
                 <div className="px-4 py-3 border-b border-zinc-800">
-                  <p className="text-sm font-semibold text-white">Analyst</p>
-                  <p className="text-xs text-zinc-500">analyst@datapilot.ai</p>
+                  <p className="text-sm font-semibold text-white">{userName}</p>
+                  <p className="text-xs text-zinc-500 truncate">{userEmail}</p>
                   <span className="badge-primary text-[10px] mt-2">Pro Plan</span>
                 </div>
                 <div className="py-2">
                   {[
-                    { icon: User, label: "Profile", action: () => {} },
+                    { icon: User, label: "Profile", action: () => { navigate("/settings"); setProfileOpen(false); } },
                     { icon: Settings, label: "Settings", action: () => { navigate("/settings"); setProfileOpen(false); } },
                   ].map(({ icon: Icon, label, action }) => (
                     <button
@@ -247,7 +261,10 @@ export default function TopNavbar({ title, subtitle, onMenuClick }) {
                   ))}
                 </div>
                 <div className="py-2 border-t border-zinc-800">
-                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/[0.06] transition-colors">
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/[0.06] transition-colors"
+                  >
                     <LogOut className="w-4 h-4" />
                     Sign out
                   </button>
