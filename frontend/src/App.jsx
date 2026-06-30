@@ -1,36 +1,38 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./context/ThemeContext";
 import { ToastProvider } from "./context/ToastContext";
-
-// Pages
-import DashboardPage from "./pages/DashboardPage";
+import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
+import LoginPage from "./pages/LoginPage";
 import UploadPage from "./pages/UploadPage";
 import ChatPage from "./pages/ChatPage";
 import SQLPage from "./pages/SQLPage";
-import VisualizationsPage from "./pages/VisualizationsPage";
-import ReportsPage from "./pages/ReportsPage";
-import HistoryPage from "./pages/HistoryPage";
-import SettingsPage from "./pages/SettingsPage";
-import DataExplorerPage from "./pages/DataExplorerPage";
+import DashboardPage from "./pages/DashboardPage";
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <ToastProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/upload" element={<UploadPage />} />
-            <Route path="/chat" element={<ChatPage />} />
-            <Route path="/sql" element={<SQLPage />} />
-            <Route path="/explorer" element={<DataExplorerPage />} />
-            <Route path="/visualizations" element={<VisualizationsPage />} />
-            <Route path="/reports" element={<ReportsPage />} />
-            <Route path="/history" element={<HistoryPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-          </Routes>
-        </BrowserRouter>
-      </ToastProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        <ToastProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/" element={
+                <ProtectedRoute><UploadPage /></ProtectedRoute>
+              } />
+              <Route path="/dashboard" element={
+                <ProtectedRoute><DashboardPage /></ProtectedRoute>
+              } />
+              <Route path="/chat" element={
+                <ProtectedRoute><ChatPage /></ProtectedRoute>
+              } />
+              <Route path="/sql" element={
+                <ProtectedRoute><SQLPage /></ProtectedRoute>
+              } />
+            </Routes>
+          </BrowserRouter>
+        </ToastProvider>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
