@@ -5,6 +5,7 @@ from db.database import get_db
 from db.crud import get_session, save_message, get_chat_history
 from services.file_service import parse_file
 from agent.core import create_agent
+from auth.dependencies import get_current_user_optional
 
 router = APIRouter()
 
@@ -14,12 +15,22 @@ class ChatRequest(BaseModel):
 
 
 @router.post("/chat")
-async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def chat(
+    request: ChatRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user_optional),
+):
 
     # Validate session exists
     session = await get_session(db, request.session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    # Ownership check — only enforced once a session actually has an owner.
+    # Sessions created without auth (user_id=NULL) stay open to anyone for now.
+    if session.user_id is not None:
+        if current_user is None or current_user.id != session.user_id:
+            raise HTTPException(status_code=403, detail="You don't have access to this session")
 
     # Load the dataframe from file
     df = parse_file(session.file_path)

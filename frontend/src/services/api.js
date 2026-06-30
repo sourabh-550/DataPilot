@@ -1,9 +1,19 @@
 import axios from "axios";
+import { supabase } from "../lib/supabaseClient";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "https://datapilot-65m6.onrender.com";
 
 const api = axios.create({
   baseURL: BASE_URL,
+});
+
+// Attach the current user's Supabase JWT to every outgoing request, if logged in.
+api.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
+  return config;
 });
 
 export const uploadFile = async (file, onProgress) => {

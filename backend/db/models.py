@@ -2,10 +2,20 @@ from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey
 from sqlalchemy.sql import func
 from db.database import Base
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True)         # UUID
+    email = Column(String, nullable=False, unique=True, index=True)
+    name = Column(String, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+
 class Session(Base):
     __tablename__ = "sessions"
 
     id = Column(String, primary_key=True)        # UUID
+    user_id = Column(String, ForeignKey("users.id"), nullable=True)  # nullable until auth is wired in
     file_name = Column(String, nullable=False)
     file_path = Column(String, nullable=False)
     file_type = Column(String, nullable=False)    # csv/excel — V2: sql/pdf
