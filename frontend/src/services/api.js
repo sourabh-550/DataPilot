@@ -66,3 +66,13 @@ export const sendSQLMessage = async (sessionId, message) => {
   });
   return response.data;
 };
+
+export const getHistory = async () => {
+  const response = await api.get("/history");
+  return response.data;
+};
+
+export const deleteSession = async (sessionId) => {
+  const response = await api.delete(`/history/${sessionId}`);
+  return response.data;
+};

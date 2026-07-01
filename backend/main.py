@@ -5,6 +5,7 @@ from db.database import engine, Base
 from api.upload import router as upload_router
 from api.sql import router as sql_router
 from api.chat import router as chat_router
+from api.history import router as history_router
 import os
 import asyncio
 import httpx
@@ -13,6 +14,7 @@ from config import UPLOAD_DIR
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 RENDER_URL = "https://datapilot-65m6.onrender.com"
+
 
 async def keep_alive():
     await asyncio.sleep(60)
@@ -25,12 +27,14 @@ async def keep_alive():
             print(f"Keep-alive failed: {e}")
         await asyncio.sleep(840)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     asyncio.create_task(keep_alive())
     yield
+
 
 app = FastAPI(
     title="DataPilot API",
@@ -49,10 +53,13 @@ app.add_middleware(
 app.include_router(upload_router, prefix="/api", tags=["Upload"])
 app.include_router(chat_router, prefix="/api", tags=["Chat"])
 app.include_router(sql_router, prefix="/api", tags=["SQL"])
+app.include_router(history_router, prefix="/api", tags=["History"])
+
 
 @app.get("/")
 async def root():
     return {"message": "DataPilot API is running 🚀"}
+
 
 @app.get("/health")
 async def health():

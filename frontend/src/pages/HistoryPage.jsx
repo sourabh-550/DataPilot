@@ -1,21 +1,13 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/layout/DashboardLayout";
-import { useLocalStorage } from "../hooks/useLocalStorage";
+import { getHistory, deleteSession } from "../services/api";
 import {
-  History,
-  Database,
-  MessageSquare,
-  Clock,
-  Rows,
-  Columns,
-  ChevronRight,
-  Upload,
-  Sparkles,
-  Search,
-  Trash2,
+  History, Database, MessageSquare, Clock,
+  Rows, Columns, ChevronRight, Upload,
+  Sparkles, Search, Trash2, RefreshCw,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 function timeAgo(dateStr) {
   if (!dateStr) return "Unknown";
@@ -28,16 +20,42 @@ function timeAgo(dateStr) {
 
 export default function HistoryPage() {
   const navigate = useNavigate();
-  const [history, setHistory] = useLocalStorage("datapilot-datasets", []);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [error, setError] = useState(null);
+
+  const fetchHistory = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getHistory();
+      setHistory(data.sessions || []);
+    } catch (err) {
+      setError("Failed to load history. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const handleDelete = async (e, sessionId) => {
+    e.stopPropagation();
+    if (!window.confirm("Remove this dataset from history?")) return;
+    try {
+      await deleteSession(sessionId);
+      setHistory((prev) => prev.filter((h) => h.session_id !== sessionId));
+    } catch {
+      alert("Failed to delete session.");
+    }
+  };
 
   const filtered = history.filter((h) =>
     h.file_name?.toLowerCase().includes(search.toLowerCase())
   );
-
-  const clearHistory = () => {
-    if (window.confirm("Clear all history?")) setHistory([]);
-  };
 
   return (
     <DashboardLayout title="History" subtitle="All your past dataset uploads and analyses">
@@ -56,18 +74,16 @@ export default function HistoryPage() {
             </div>
             <h2 className="text-2xl font-bold text-white">Dataset History</h2>
             <p className="text-zinc-400 text-sm mt-1">
-              {history.length} dataset{history.length !== 1 ? "s" : ""} uploaded
+              {loading ? "Loading..." : `${history.length} dataset${history.length !== 1 ? "s" : ""} uploaded`}
             </p>
           </div>
-          {history.length > 0 && (
-            <button
-              onClick={clearHistory}
-              className="btn-ghost gap-2 text-sm text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/30 rounded-xl"
-            >
-              <Trash2 className="w-4 h-4" />
-              Clear All
-            </button>
-          )}
+          <button
+            onClick={fetchHistory}
+            className="btn-ghost gap-2 text-sm rounded-xl border border-zinc-800 px-3 py-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
         </motion.div>
 
         {/* Search */}
@@ -89,8 +105,20 @@ export default function HistoryPage() {
           </motion.div>
         )}
 
-        {/* History List */}
-        {filtered.length === 0 ? (
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center justify-center py-20">
+            <RefreshCw className="w-6 h-6 text-indigo-400 animate-spin" />
+          </div>
+        )}
+
+        {/* Error */}
+        {error && !loading && (
+          <div className="text-center py-10 text-red-400 text-sm">{error}</div>
+        )}
+
+        {/* Empty state */}
+        {!loading && !error && filtered.length === 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -116,7 +144,10 @@ export default function HistoryPage() {
               </button>
             )}
           </motion.div>
-        ) : (
+        )}
+
+        {/* History list */}
+        {!loading && !error && filtered.length > 0 && (
           <div className="space-y-3">
             {filtered.map((item, i) => (
               <motion.div
@@ -139,15 +170,15 @@ export default function HistoryPage() {
                     <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-zinc-500">
                       <span className="flex items-center gap-1">
                         <Rows className="w-3 h-3" />
-                        {item.summary?.row_count?.toLocaleString()} rows
+                        {item.row_count?.toLocaleString()} rows
                       </span>
                       <span className="flex items-center gap-1">
                         <Columns className="w-3 h-3" />
-                        {item.summary?.col_count} columns
+                        {item.col_count} columns
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {timeAgo(item.uploadedAt)}
+                        {timeAgo(item.created_at)}
                       </span>
                     </div>
                   </div>
@@ -165,6 +196,12 @@ export default function HistoryPage() {
                     >
                       <MessageSquare className="w-3.5 h-3.5" />
                       Chat
+                    </button>
+                    <button
+                      onClick={(e) => handleDelete(e, item.session_id)}
+                      className="btn-ghost gap-1.5 text-xs rounded-xl border border-red-500/20 text-red-400 hover:text-red-300 px-3 py-2"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                     <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400 group-hover:translate-x-0.5 transition-all" />
                   </div>
