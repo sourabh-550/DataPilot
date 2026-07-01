@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import delete as sa_delete
 from db.database import get_db
 from db.models import Session, ChatHistory
 from auth.dependencies import get_current_user_optional
@@ -60,6 +61,12 @@ async def delete_session(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    # Delete child chat_history rows first — they have a FK to sessions.id
+    # with no ON DELETE CASCADE configured, so deleting the session directly
+    # fails if it has any chat messages.
+    await db.execute(
+        sa_delete(ChatHistory).where(ChatHistory.session_id == session_id)
+    )
     await db.delete(session)
     await db.commit()
     return {"deleted": session_id}

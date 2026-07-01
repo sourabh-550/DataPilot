@@ -20,8 +20,13 @@ async def upload_file(
 
     session_id = str(uuid.uuid4())
     content = await file.read()
-    file_path = save_file(session_id, file.filename, content)
-    df = parse_file(file_path)
+
+    try:
+        file_path = save_file(session_id, file.filename, content)
+        df = parse_file(file_path)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     summary = get_file_summary(df)
 
     file_type = "excel" if file.filename.endswith((".xlsx", ".xls")) else "csv"

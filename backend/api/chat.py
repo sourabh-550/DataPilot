@@ -33,7 +33,10 @@ async def chat(
             raise HTTPException(status_code=403, detail="You don't have access to this session")
 
     # Load the dataframe from file
-    df = parse_file(session.file_path)
+    try:
+        df = parse_file(session.file_path)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     #  Save user message to DB
     await save_message(db, request.session_id, "user", request.message)
