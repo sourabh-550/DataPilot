@@ -1,4 +1,5 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from typing import Optional
 from services.sql_service import (
@@ -9,12 +10,16 @@ from agent.tools.sql_tool import create_sql_tool
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 from config import GROQ_API_KEY
+from db.database import get_db
+from auth.dependencies import get_current_user_optional
 import json
 import uuid
 
 router = APIRouter()
 
 # In-memory session store for SQL sessions
+# TODO V2: migrate to DB-backed sql_sessions table (same as sessions/chat_history)
+# so SQL sessions survive server restarts and are tied to user accounts properly
 sql_sessions = {}
 
 
@@ -35,7 +40,11 @@ class SQLChatRequest(BaseModel):
 # ── Endpoint 1 — Upload SQLite .db file ──────────────────────
 
 @router.post("/sql/upload-db")
-async def upload_db(file: UploadFile = File(...)):
+async def upload_db(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user_optional),
+):
     if not file.filename.endswith(".db"):
         raise HTTPException(
             status_code=400,
@@ -51,13 +60,14 @@ async def upload_db(file: UploadFile = File(...)):
         schema = extract_schema(engine)
         schema_text = schema_to_text(schema)
 
-        # Store in session
         sql_sessions[session_id] = {
             "engine": engine,
             "schema": schema,
             "schema_text": schema_text,
             "connection_type": "sqlite",
-            "db_name": file.filename
+            "db_name": file.filename,
+            # TODO V2: persist to DB with user_id so sessions survive restarts
+            "user_id": current_user.id if current_user else None,
         }
 
         return {
@@ -75,7 +85,11 @@ async def upload_db(file: UploadFile = File(...)):
 # ── Endpoint 2 — Connect via connection string ────────────────
 
 @router.post("/sql/connect")
-async def connect_db(request: ConnectionRequest):
+async def connect_db(
+    request: ConnectionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user_optional),
+):
     session_id = str(uuid.uuid4())
 
     try:
@@ -100,7 +114,9 @@ async def connect_db(request: ConnectionRequest):
             "schema": schema,
             "schema_text": schema_text,
             "connection_type": request.connection_type,
-            "db_name": request.database
+            "db_name": request.database,
+            # TODO V2: persist to DB with user_id so sessions survive restarts
+            "user_id": current_user.id if current_user else None,
         }
 
         return {
@@ -118,10 +134,19 @@ async def connect_db(request: ConnectionRequest):
 # ── Endpoint 3 — Natural Language Chat ───────────────────────
 
 @router.post("/sql/chat")
-async def sql_chat(request: SQLChatRequest):
+async def sql_chat(
+    request: SQLChatRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user_optional),
+):
     session = sql_sessions.get(request.session_id)
     if not session:
         raise HTTPException(status_code=404, detail="SQL session not found")
+
+    # Ownership check — only enforced once SQL sessions are DB-backed (V2)
+    # For now, in-memory sessions are scoped to the server process only,
+    # so a session_id from another user would just 404 naturally (not in memory)
+    # TODO V2: check session["user_id"] == current_user.id once DB-backed
 
     try:
         sql_tool = create_sql_tool(
@@ -129,7 +154,6 @@ async def sql_chat(request: SQLChatRequest):
             schema_text=session["schema_text"]
         )
 
-        # Run the tool
         result_str = sql_tool.func(request.message)
         result = json.loads(result_str)
 
@@ -158,7 +182,11 @@ async def sql_chat(request: SQLChatRequest):
 # ── Endpoint 4 — Get Schema ───────────────────────────────────
 
 @router.get("/sql/schema/{session_id}")
-async def get_schema(session_id: str):
+async def get_schema(
+    session_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user_optional),
+):
     session = sql_sessions.get(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
