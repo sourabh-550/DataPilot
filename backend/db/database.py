@@ -1,19 +1,23 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase #Used to create base class for all DB table
 from config import DATABASE_URL
 
-# Supabase/Render give you a plain "postgresql://" URI — SQLAlchemy's async
-# engine needs the asyncpg driver explicitly, so we rewrite the scheme here.
-# This means you can paste the connection string straight from Supabase
-# into .env without editing it.
+'''Here we are imporitng sqlalchmey asynchronous component
+then we use to create the base class for all db tables
+instead of writing the db pass inside code its stored in .env'''
+
 _db_url = DATABASE_URL
 if _db_url.startswith("postgresql://"):
+    '''This works for many PostgreSQL tools.
+        But SQLAlchemy's async engine requires a different driver.'''
     _db_url = _db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 elif _db_url.startswith("postgres://"):
-    _db_url = _db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+    _db_url = _db_url.replace("postgres://", "postgresql+asyncpg://", 1) # Some hosting provider use prstgres:// it convert that too
 
 # Create async engine
-engine = create_async_engine(_db_url, echo=False)
+engine = create_async_engine(_db_url
+                             , echo=False)
 
 # Session factory
 AsyncSessionLocal = async_sessionmaker(

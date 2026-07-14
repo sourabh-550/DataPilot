@@ -76,3 +76,16 @@ export const deleteSession = async (sessionId) => {
   const response = await api.delete(`/history/${sessionId}`);
   return response.data;
 };
+
+// ── Profile APIs ──────────────────────────────────────────────
+
+export const getProfile = async () => {
+  const response = await api.get("/profile");
+  return response.data;
+};
+
+export const updateProfile = async (profileData) => {
+  // profileData: { name, role, company }
+  const response = await api.put("/profile", profileData);
+  return response.data;
+};

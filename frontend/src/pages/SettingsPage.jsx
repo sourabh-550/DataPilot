@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import {
@@ -16,8 +16,10 @@ import {
   Moon,
   Sun,
   Monitor,
+  Loader2,
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
+import { getProfile, updateProfile } from "../lib/api";
 
 const SECTIONS = [
   { id: "profile", label: "Profile", icon: User },
@@ -32,16 +34,66 @@ export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
   const [activeSection, setActiveSection] = useState("profile");
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [profileForm, setProfileForm] = useState({
-    name: "Analyst",
-    email: "analyst@datapilot.ai",
-    role: "Data Analyst",
-    company: "DataPilot",
+    name: "",
+    email: "",
+    role: "",
+    company: "",
   });
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  // Fetch the real profile from the backend on mount
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProfile() {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getProfile();
+        if (!cancelled) {
+          setProfileForm({
+            name: data.name || "",
+            email: data.email || "",
+            role: data.role || "",
+            company: data.company || "",
+          });
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError("Could not load your profile. Please refresh and try again.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadProfile();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      // Email is intentionally not sent — it's managed by Supabase Auth, not editable here.
+      const updated = await updateProfile({
+        name: profileForm.name,
+        role: profileForm.role,
+        company: profileForm.company,
+      });
+      setProfileForm((prev) => ({ ...prev, ...updated }));
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError("Could not save your changes. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -90,54 +142,80 @@ export default function SettingsPage() {
                   <p className="text-sm text-zinc-500">Manage your personal information</p>
                 </div>
 
-                {/* Avatar */}
-                <div className="card rounded-2xl p-6">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="relative">
-                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xl font-bold shadow-glow">
-                        {profileForm.name.charAt(0)}
+                {loading ? (
+                  <div className="card rounded-2xl p-12 flex items-center justify-center">
+                    <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
+                  </div>
+                ) : (
+                  <>
+                    {error && (
+                      <div className="rounded-xl border border-red-500/20 bg-red-500/10 text-red-300 text-sm px-4 py-3">
+                        {error}
                       </div>
-                      <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-400 border-2 border-zinc-900 flex items-center justify-center">
-                        <Check className="w-2.5 h-2.5 text-white" />
+                    )}
+
+                    {/* Avatar */}
+                    <div className="card rounded-2xl p-6">
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="relative">
+                          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xl font-bold shadow-glow">
+                            {(profileForm.name || "?").charAt(0).toUpperCase()}
+                          </div>
+                          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-400 border-2 border-zinc-900 flex items-center justify-center">
+                            <Check className="w-2.5 h-2.5 text-white" />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-white">{profileForm.name || "Unnamed"}</p>
+                          <p className="text-sm text-zinc-500">{profileForm.role || "No role set"}</p>
+                          <span className="badge-primary text-[10px] mt-1">Pro Plan</span>
+                        </div>
+                        <button className="btn-outline ml-auto rounded-xl text-sm gap-2 px-4 py-2">
+                          Change Avatar
+                        </button>
+                      </div>
+
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        {Object.entries(profileForm).map(([key, val]) => (
+                          <div key={key}>
+                            <label className="text-xs font-medium text-zinc-400 capitalize block mb-1.5">
+                              {key}
+                            </label>
+                            <input
+                              type={key === "email" ? "email" : "text"}
+                              value={val}
+                              disabled={key === "email"}
+                              onChange={(e) =>
+                                setProfileForm({ ...profileForm, [key]: e.target.value })
+                              }
+                              className={`input-field py-2.5 ${
+                                key === "email" ? "opacity-60 cursor-not-allowed" : ""
+                              }`}
+                            />
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-white">{profileForm.name}</p>
-                      <p className="text-sm text-zinc-500">{profileForm.role}</p>
-                      <span className="badge-primary text-[10px] mt-1">Pro Plan</span>
+
+                    <div className="flex justify-end">
+                      <motion.button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="btn-primary gap-2 rounded-2xl disabled:opacity-60"
+                        whileHover={{ scale: saving ? 1 : 1.03 }}
+                        whileTap={{ scale: saving ? 1 : 0.97 }}
+                      >
+                        {saving ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" />Saving...</>
+                        ) : saved ? (
+                          <><Check className="w-4 h-4" />Saved!</>
+                        ) : (
+                          <><Zap className="w-4 h-4" />Save Changes</>
+                        )}
+                      </motion.button>
                     </div>
-                    <button className="btn-outline ml-auto rounded-xl text-sm gap-2 px-4 py-2">
-                      Change Avatar
-                    </button>
-                  </div>
-
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    {Object.entries(profileForm).map(([key, val]) => (
-                      <div key={key}>
-                        <label className="text-xs font-medium text-zinc-400 capitalize block mb-1.5">
-                          {key}
-                        </label>
-                        <input
-                          type={key === "email" ? "email" : "text"}
-                          value={val}
-                          onChange={(e) => setProfileForm({ ...profileForm, [key]: e.target.value })}
-                          className="input-field py-2.5"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <motion.button
-                    onClick={handleSave}
-                    className="btn-primary gap-2 rounded-2xl"
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    {saved ? <><Check className="w-4 h-4" />Saved!</> : <><Zap className="w-4 h-4" />Save Changes</>}
-                  </motion.button>
-                </div>
+                  </>
+                )}
               </motion.div>
             )}
 

@@ -40,6 +40,29 @@ async def get_or_create_user(db: AsyncSession, email: str, name: str = None, use
     return await create_user(db, email=email, name=name, user_id=user_id)
 
 
+async def update_user_profile(
+    db: AsyncSession,
+    user_id: str,
+    name: str = None,
+    role: str = None,
+    company: str = None,
+):
+    user = await get_user_by_id(db, user_id)
+    if not user:
+        return None
+
+    if name is not None:
+        user.name = name
+    if role is not None:
+        user.role = role
+    if company is not None:
+        user.company = company
+
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
 # Sessions
 
 async def create_session(db: AsyncSession, session_id: str, file_name: str,
@@ -66,8 +89,8 @@ async def get_session(db: AsyncSession, session_id: str):
     )
     return result.scalar_one_or_none()
 
-
 # Chat History
+
 async def save_message(db: AsyncSession, session_id: str,
                         role: str, message: str, tool_used: str = None):
     chat = ChatHistory(

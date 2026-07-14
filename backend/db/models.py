@@ -8,6 +8,8 @@ class User(Base):
     id = Column(String, primary_key=True)         # UUID
     email = Column(String, nullable=False, unique=True, index=True)
     name = Column(String, nullable=True)
+    role = Column(String, nullable=True)           # e.g. "Data Analyst"
+    company = Column(String, nullable=True)        # e.g. "DataPilot"
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -15,15 +17,14 @@ class Session(Base):
     __tablename__ = "sessions"
 
     id = Column(String, primary_key=True)        # UUID
-    user_id = Column(String, ForeignKey("users.id"), nullable=True)  # nullable until auth is wired in
+    user_id = Column(String, ForeignKey("users.id"), nullable=True)
     file_name = Column(String, nullable=False)
-    file_path = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)    # raw file, untouched
     file_type = Column(String, nullable=False)    # csv/excel — V2: sql/pdf
     row_count = Column(Integer)
     col_count = Column(Integer)
     created_at = Column(DateTime, server_default=func.now())
-    expires_at = Column(DateTime)                 # V2: auto cleanup
-
+    expires_at = Column(DateTime)
 
 class ChatHistory(Base):
     __tablename__ = "chat_history"
