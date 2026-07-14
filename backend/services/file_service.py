@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import os
 from io import BytesIO
 from supabase import create_client, Client
@@ -87,6 +88,16 @@ def parse_file(file_path: str) -> pd.DataFrame:
 
 
 def get_file_summary(df: pd.DataFrame) -> dict:
+    """
+    Builds a JSON-safe summary of the dataframe.
+    NOTE: NaN/Infinity values (common in real-world CSVs) are not valid JSON,
+    so any raw row/record data must be sanitized before being returned in the
+    API response — otherwise FastAPI's default JSONResponse will raise
+    'ValueError: Out of range float values are not JSON compliant'.
+    """
+    safe_head = df.head(5).replace([np.inf, -np.inf], np.nan)
+    safe_head = safe_head.where(pd.notnull(safe_head), None)
+
     return {
         "row_count": len(df),
         "col_count": len(df.columns),
@@ -99,5 +110,5 @@ def get_file_summary(df: pd.DataFrame) -> dict:
             }
             for col in df.columns
         ],
-        "sample_rows": df.head(5).to_dict(orient="records")
+        "sample_rows": safe_head.to_dict(orient="records")
     }
