@@ -87,13 +87,29 @@ def parse_file(file_path: str) -> pd.DataFrame:
     raise ValueError(f"Unsupported file type: {ext}")
 
 
+def _json_safe_value(v):
+    """Converts a single value to something json.dumps can always handle."""
+    if isinstance(v, (float, np.floating)):
+        if pd.isna(v) or np.isinf(v):
+            return None
+        return float(v)
+    if isinstance(v, (np.integer,)):
+        return int(v)
+    if pd.isna(v):
+        return None
+    return v
+
+
 def get_file_summary(df: pd.DataFrame) -> dict:
     """
     Builds a JSON-safe summary of the dataframe.
-    NOTE: NaN/Infinity values (common in real-world CSVs) are not valid JSON,
-    so any raw row/record data must be sanitized before being returned in the
-    API response — otherwise FastAPI's default JSONResponse will raise
-    'ValueError: Out of range float values are not JSON compliant'.
+    NOTE: NaN and Infinity/-Infinity values (both common in real-world CSVs —
+    e.g. from division-by-zero in ratio columns, or blank cells) are NOT valid
+    JSON. dropna() alone is NOT enough, since it only removes NaN, not Infinity.
+    Every raw value pulled from the DataFrame and returned in the API response
+    must be sanitized through _json_safe_value, otherwise FastAPI's default
+    JSONResponse will raise 'ValueError: Out of range float values are not
+    JSON compliant'.
     """
     safe_head = df.head(5).replace([np.inf, -np.inf], np.nan)
     safe_head = safe_head.where(pd.notnull(safe_head), None)
@@ -106,7 +122,11 @@ def get_file_summary(df: pd.DataFrame) -> dict:
                 "name": col,
                 "dtype": str(df[col].dtype),
                 "null_count": int(df[col].isnull().sum()),
-                "sample_values": df[col].dropna().head(3).tolist()
+                "sample_values": [
+                    _json_safe_value(v)
+                    for v in df[col].head(5).tolist()
+                    if _json_safe_value(v) is not None
+                ][:3]
             }
             for col in df.columns
         ],
