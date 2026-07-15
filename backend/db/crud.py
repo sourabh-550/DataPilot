@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from db.models import Session, ChatHistory, User
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from config import SESSION_EXPIRY_HOURS
 import uuid
 
@@ -76,7 +76,7 @@ async def create_session(db: AsyncSession, session_id: str, file_name: str,
         file_type=file_type,
         row_count=row_count,
         col_count=col_count,
-        expires_at=datetime.utcnow() + timedelta(hours=SESSION_EXPIRY_HOURS)
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=SESSION_EXPIRY_HOURS)
     )
     db.add(session)
     await db.commit()

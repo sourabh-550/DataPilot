@@ -1,10 +1,13 @@
 import axios from "axios";
 import { supabase } from "../lib/supabaseClient";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "https://datapilot-65m6.onrender.com";
+// Ensure the fallback URL always includes the /api prefix so requests resolve
+// correctly even when the VITE_API_URL env var is absent.
+const BASE_URL = import.meta.env.VITE_API_URL || "https://datapilot-65m6.onrender.com/api";
 
 const api = axios.create({
   baseURL: BASE_URL,
+  timeout: 30000, // 30s timeout — prevents requests hanging indefinitely
 });
 
 // Attach the current user's Supabase JWT to every outgoing request, if logged in.
@@ -15,6 +18,18 @@ api.interceptors.request.use(async (config) => {
   }
   return config;
 });
+
+// Automatically sign out on 401 responses — handles expired/invalid tokens.
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      await supabase.auth.signOut();
+    }
+    return Promise.reject(error);
+  }
+);
+
 
 export const uploadFile = async (file, onProgress) => {
   const formData = new FormData();

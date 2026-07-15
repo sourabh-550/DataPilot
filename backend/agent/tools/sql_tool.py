@@ -7,16 +7,18 @@ from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 from config import GROQ_API_KEY
 
+# Module-level LLM instance — shared across all SQL tool calls.
+_llm = ChatGroq(
+    groq_api_key=GROQ_API_KEY,
+    model_name="llama-3.1-8b-instant",
+    temperature=0,
+)
+
 
 def create_sql_tool(engine, schema_text: str) -> StructuredTool:
 
     def nl_to_sql(question: str) -> str:
         """Convert natural language to SQL and execute it."""
-        llm = ChatGroq(
-            groq_api_key=GROQ_API_KEY,
-            model_name="llama-3.1-8b-instant",
-            temperature=0
-        )
 
         system = f"""You are a SQL expert. Convert natural language to SQL.
 
@@ -29,7 +31,7 @@ Rules:
 - No markdown, no explanation, just the SQL query
 - Always add LIMIT 100 if no limit specified"""
 
-        response = llm.invoke([
+        response = _llm.invoke([
             SystemMessage(content=system),
             HumanMessage(content=question)
         ])

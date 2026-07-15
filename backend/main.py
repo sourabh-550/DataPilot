@@ -21,7 +21,7 @@ async def keep_alive(): # Prevent Render from sleeping
     await asyncio.sleep(60) #Wait 60 sec after startup
     while True:
         try:
-            async with httpx.AsyncClient() as client: #Create client like exactly browser is making request
+            async with httpx.AsyncClient(timeout=10.0) as client:
                 await client.get(f"{RENDER_URL}/health")
                 print("✅ Keep-alive ping sent")
         except Exception as e:
@@ -47,11 +47,19 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+ALLOWED_ORIGINS = [
+    "https://datapilot-frontend.vercel.app",  # Production frontend
+    "http://localhost:5173",                   # Vite dev server
+    "http://localhost:4173",                   # Vite preview
+    "http://127.0.0.1:5173",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
 app.include_router(upload_router, prefix="/api", tags=["Upload"])

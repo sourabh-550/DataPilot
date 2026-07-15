@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import DashboardLayout from "../components/layout/DashboardLayout";
@@ -59,7 +59,7 @@ function UploadZone({ onUpload, loading, progress }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
-  const inputRef = { current: null };
+  const fileInputRef = useRef(null);
 
   const handleFile = useCallback(async (file) => {
     if (!file) return;
@@ -181,10 +181,10 @@ function UploadZone({ onUpload, loading, progress }) {
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
-        onClick={() => document.getElementById("fileInput").click()}
+        onClick={() => fileInputRef.current?.click()}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => e.key === "Enter" && document.getElementById("fileInput").click()}
+        onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
         aria-label="Upload dataset"
         className={`drop-zone relative p-12 sm:p-16 text-center ${dragging ? "dragging" : ""}`}
       >
@@ -262,7 +262,7 @@ function UploadZone({ onUpload, loading, progress }) {
         </motion.button>
 
         <input
-          id="fileInput"
+          ref={fileInputRef}
           type="file"
           accept=".csv,.xlsx,.xls"
           className="hidden"

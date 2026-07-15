@@ -19,7 +19,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
-import { getProfile, updateProfile } from "../lib/api";
+import { getProfile, updateProfile } from "../services/api";
 
 const SECTIONS = [
   { id: "profile", label: "Profile", icon: User },

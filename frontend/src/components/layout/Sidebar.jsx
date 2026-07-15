@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import {
   LayoutDashboard,
   Upload,
@@ -37,6 +38,7 @@ const BOTTOM_NAV = [
 export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const [history, setHistory] = useState([]);
 
   useEffect(() => {
@@ -205,17 +207,27 @@ export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }
         ))}
 
         {/* User Card */}
-        <div className={`flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl bg-zinc-900/60 border border-zinc-800/60 ${collapsed ? "justify-center px-0" : ""}`}>
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-glow-sm">
-            A
-          </div>
-          {!collapsed && (
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-white truncate">Analyst</p>
-              <p className="text-[10px] text-zinc-500">Pro Plan</p>
+        {(() => {
+          const displayName =
+            user?.user_metadata?.full_name ||
+            user?.user_metadata?.name ||
+            user?.email?.split("@")[0] ||
+            "User";
+          const initial = displayName.charAt(0).toUpperCase();
+          return (
+            <div className={`flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl bg-zinc-900/60 border border-zinc-800/60 ${collapsed ? "justify-center px-0" : ""}`}>
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-glow-sm">
+                {initial}
+              </div>
+              {!collapsed && (
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white truncate">{displayName}</p>
+                  <p className="text-[10px] text-zinc-500 truncate">{user?.email || ""}</p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          );
+        })()}
       </div>
     </div>
   );

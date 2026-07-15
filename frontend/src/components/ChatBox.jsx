@@ -128,7 +128,7 @@ function TypingIndicator() {
   );
 }
 
-export default function ChatBox({ sessionId }) {
+export default function ChatBox({ sessionId, sendRef }) {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -146,6 +146,10 @@ export default function ChatBox({ sessionId }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  // Expose handleSend to parent via sendRef so suggestions can inject messages.
+  useEffect(() => {
+    if (sendRef) sendRef.current = (text) => handleSend(text);
+  });
   const handleSend = async (text) => {
     const userMessage = (text || input).trim();
     if (!userMessage || loading) return;

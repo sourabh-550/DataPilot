@@ -9,7 +9,15 @@ def get_engine(connection_type: str, **kwargs):
     """
     Creates database engine based on connection type.
     connection_type: 'sqlite', 'mysql', 'postgresql', 'mssql'
+    Raises ValueError for unsupported types.
     """
+    SUPPORTED_TYPES = {"sqlite", "mysql", "postgresql", "mssql"}
+    if connection_type not in SUPPORTED_TYPES:
+        raise ValueError(
+            f"Unsupported connection type: '{connection_type}'. "
+            f"Supported: {', '.join(sorted(SUPPORTED_TYPES))}"
+        )
+
     if connection_type == "sqlite":
         db_path = kwargs.get("db_path")
         return sa.create_engine(f"sqlite:///{db_path}")
@@ -44,15 +52,15 @@ def get_engine(connection_type: str, **kwargs):
             f"?driver=ODBC+Driver+17+for+SQL+Server"
         )
 
-    raise ValueError(f"Unsupported connection type: {connection_type}")
-
 
 def extract_schema(engine) -> dict:
     """
     Extracts complete schema from database.
     Returns table names, columns, types, and sample rows.
+    Uses dialect-aware SQL for sample rows (LIMIT vs TOP).
     """
     inspector = inspect(engine)
+    dialect_name = engine.dialect.name  # 'sqlite', 'mysql', 'postgresql', 'mssql'
     schema = {}
 
     for table_name in inspector.get_table_names():
@@ -63,11 +71,15 @@ def extract_schema(engine) -> dict:
                 "type": str(col["type"])
             })
 
-        # Get sample rows
+        # Use dialect-appropriate syntax to fetch sample rows
+        quoted_name = inspector.engine.dialect.identifier_preparer.quote(table_name)
+        if dialect_name == "mssql":
+            sample_sql = f"SELECT TOP 3 * FROM {quoted_name}"
+        else:
+            sample_sql = f"SELECT * FROM {quoted_name} LIMIT 3"
+
         with engine.connect() as conn:
-            result = conn.execute(
-                text(f"SELECT * FROM {table_name} LIMIT 3")
-            )
+            result = conn.execute(text(sample_sql))
             rows = [dict(row._mapping) for row in result]
 
         schema[table_name] = {

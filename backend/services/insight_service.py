@@ -3,22 +3,45 @@ from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
 from config import GROQ_API_KEY
 import json
+import math
+
+# Module-level LLM instance — avoids re-creating the client on every upload request.
+_llm = ChatGroq(
+    groq_api_key=GROQ_API_KEY,
+    model_name="llama-3.1-8b-instant",
+    temperature=0.3,
+)
+
+
+def _safe_stat(value) -> str:
+    """Format a numeric stat safely, returning 'N/A' for NaN/Inf values."""
+    try:
+        if value is None or (isinstance(value, float) and (math.isnan(value) or math.isinf(value))):
+            return "N/A"
+        return str(round(float(value), 2))
+    except (TypeError, ValueError):
+        return "N/A"
 
 
 def build_data_summary(df: pd.DataFrame) -> str:
-    # Builds a text summary of the dataframe for the LLM to analyze
+    """Builds a text summary of the dataframe for the LLM to analyze."""
     summary = f"Dataset has {df.shape[0]} rows and {df.shape[1]} columns.\n\n"
     summary += "Column Details:\n"
 
     for col in df.columns:
         summary += f"\n- {col} ({str(df[col].dtype)})"
-        if df[col].dtype in ['int64', 'float64']:
-            summary += f"\n  Min: {df[col].min()}, Max: {df[col].max()}"
-            summary += f"\n  Mean: {round(df[col].mean(), 2)}"
-            summary += f"\n  Sum: {df[col].sum()}"
+        if df[col].dtype in ['int64', 'float64', 'Int64', 'Float64']:
+            summary += f"\n  Min: {_safe_stat(df[col].min())}, Max: {_safe_stat(df[col].max())}"
+            summary += f"\n  Mean: {_safe_stat(df[col].mean())}"
+            summary += f"\n  Sum: {_safe_stat(df[col].sum())}"
         else:
             summary += f"\n  Unique Values: {df[col].nunique()}"
-            summary += f"\n  Most Common: {df[col].value_counts().index[0]}"
+            # Guard against all-null categorical columns (value_counts returns empty Series)
+            value_counts = df[col].value_counts()
+            if len(value_counts) > 0:
+                summary += f"\n  Most Common: {value_counts.index[0]}"
+            else:
+                summary += "\n  Most Common: N/A (all values are null)"
 
     summary += f"\n\nFirst 5 rows:\n{df.head().to_string()}"
     return summary
@@ -27,13 +50,8 @@ def build_data_summary(df: pd.DataFrame) -> str:
 def generate_insights(df: pd.DataFrame) -> list[str]:
     """
     Uses Groq LLM to generate 4-5 business insights from the dataset.
-    Returns a list of insight strings.
+    Returns a list of insight strings. Uses the module-level _llm instance.
     """
-    llm = ChatGroq(
-    groq_api_key=GROQ_API_KEY,
-    model_name="llama-3.1-8b-instant",  
-    temperature=0.3
-)
 
     data_summary = build_data_summary(df)
 
@@ -52,7 +70,7 @@ Rules:
 Generate the insights now:"""
 
     try:
-        response = llm.invoke([HumanMessage(content=prompt)])
+        response = _llm.invoke([HumanMessage(content=prompt)])
         raw = response.content.strip()
 
         # Clean response if LLM adds markdown

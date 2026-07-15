@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from db.database import get_db
 from db.crud import get_session, save_message, get_chat_history
 from services.file_service import parse_file
@@ -11,7 +11,12 @@ router = APIRouter()
 
 class ChatRequest(BaseModel):
     session_id: str
-    message: str
+    message: str = Field(
+        ...,
+        min_length=1,
+        max_length=5000,
+        description="The user's message to the AI agent (max 5000 characters)",
+    )
 
 
 @router.post("/chat")

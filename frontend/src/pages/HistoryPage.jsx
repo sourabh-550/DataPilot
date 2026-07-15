@@ -2,28 +2,23 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import { getHistory, deleteSession } from "../services/api";
+import { timeAgo } from "../utils/formatters";
+import { useToast } from "../context/ToastContext";
 import {
   History, Database, MessageSquare, Clock,
   Rows, Columns, ChevronRight, Upload,
-  Sparkles, Search, Trash2, RefreshCw,
+  Sparkles, Search, Trash2, RefreshCw, AlertCircle,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
-function timeAgo(dateStr) {
-  if (!dateStr) return "Unknown";
-  const seconds = Math.floor((new Date() - new Date(dateStr)) / 1000);
-  if (seconds < 60) return "Just now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
-}
-
 export default function HistoryPage() {
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [error, setError] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null); // session_id awaiting confirmation
 
   const fetchHistory = async () => {
     setLoading(true);
@@ -44,12 +39,18 @@ export default function HistoryPage() {
 
   const handleDelete = async (e, sessionId) => {
     e.stopPropagation();
-    if (!window.confirm("Remove this dataset from history?")) return;
+    // First click: enter confirmation state. Second click: actually delete.
+    if (confirmDelete !== sessionId) {
+      setConfirmDelete(sessionId);
+      return;
+    }
+    setConfirmDelete(null);
     try {
       await deleteSession(sessionId);
       setHistory((prev) => prev.filter((h) => h.session_id !== sessionId));
+      addToast("Dataset removed from history.", "success");
     } catch {
-      alert("Failed to delete session.");
+      addToast("Failed to delete session. Please try again.", "error");
     }
   };
 
@@ -182,29 +183,47 @@ export default function HistoryPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="badge-primary text-[10px] hidden sm:flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" />
-                      AI Ready
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate("/chat", { state: { sessionData: item } });
-                      }}
-                      className="btn-ghost gap-1.5 text-xs rounded-xl border border-zinc-800 px-3 py-2"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      Chat
-                    </button>
-                    <button
-                      onClick={(e) => handleDelete(e, item.session_id)}
-                      className="btn-ghost gap-1.5 text-xs rounded-xl border border-red-500/20 text-red-400 hover:text-red-300 px-3 py-2"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                    <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400 group-hover:translate-x-0.5 transition-all" />
-                  </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                     <span className="badge-primary text-[10px] hidden sm:flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" />
+                        AI Ready
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate("/chat", { state: { sessionData: item } });
+                        }}
+                        className="btn-ghost gap-1.5 text-xs rounded-xl border border-zinc-800 px-3 py-2"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        Chat
+                      </button>
+                      {confirmDelete === item.session_id ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={(e) => handleDelete(e, item.session_id)}
+                            className="btn-ghost gap-1 text-xs rounded-xl border border-red-500/40 text-red-400 hover:bg-red-500/10 px-2.5 py-2"
+                          >
+                            <AlertCircle className="w-3 h-3" />
+                            Confirm
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setConfirmDelete(null); }}
+                            className="btn-ghost text-xs rounded-xl border border-zinc-800 px-2.5 py-2 text-zinc-500"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => handleDelete(e, item.session_id)}
+                          className="btn-ghost gap-1.5 text-xs rounded-xl border border-zinc-800/60 text-zinc-600 hover:text-red-400 hover:border-red-500/20 px-3 py-2 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400 group-hover:translate-x-0.5 transition-all" />
+                    </div>
                 </div>
               </motion.div>
             ))}

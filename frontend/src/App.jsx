@@ -13,6 +13,7 @@ import ReportsPage from "./pages/ReportsPage";
 import HistoryPage from "./pages/HistoryPage";
 import SettingsPage from "./pages/SettingsPage";
 import DataExplorerPage from "./pages/DataExplorerPage";
+import NotFoundPage from "./pages/NotFoundPage";
 
 export default function App() {
   return (
@@ -55,6 +56,9 @@ export default function App() {
               <Route path="/settings" element={
                 <ProtectedRoute><SettingsPage /></ProtectedRoute>
               } />
+
+              {/* 404 catch-all — must be last */}
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </BrowserRouter>
         </ToastProvider>

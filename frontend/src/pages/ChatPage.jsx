@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import ChatBox from "../components/ChatBox";
 import InsightCard from "../components/InsightCard";
@@ -15,6 +15,7 @@ import {
   Sparkles,
   ChevronRight,
   Upload,
+  X,
 } from "lucide-react";
 
 function DatasetCard({ summary, fileName }) {
@@ -66,6 +67,13 @@ export default function ChatPage() {
   const navigate = useNavigate();
   const sessionData = location.state?.sessionData;
   const [columnSearch, setColumnSearch] = useState("");
+  const [mobileInfoOpen, setMobileInfoOpen] = useState(false);
+  // Ref to the ChatBox's sendMessage function — lets parent inject suggestions.
+  const chatboxSendRef = useRef(null);
+
+  const handleSuggestion = (text) => {
+    chatboxSendRef.current?.(text);
+  };
 
   useEffect(() => {
     if (!sessionData) navigate("/upload");
@@ -156,8 +164,12 @@ export default function ChatPage() {
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 Connected
               </span>
-              {/* Mobile: dataset info toggle */}
-              <button className="xl:hidden btn-ghost p-1.5 rounded-lg text-xs gap-1 border border-zinc-800">
+          {/* Mobile dataset info toggle */}
+              <button
+                onClick={() => setMobileInfoOpen(true)}
+                className="xl:hidden btn-ghost p-1.5 rounded-lg text-xs gap-1 border border-zinc-800"
+                aria-label="View dataset info"
+              >
                 <Database className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -165,11 +177,11 @@ export default function ChatPage() {
 
           {/* ChatBox */}
           <div className="flex-1 min-h-0">
-            <ChatBox sessionId={session_id} />
+            <ChatBox sessionId={session_id} sendRef={chatboxSendRef} />
           </div>
         </div>
 
-        {/* ── Right Panel (insights, mobile) ── */}
+        {/* ── Right Panel (AI Suggestions) ── */}
         <div className="hidden 2xl:flex flex-col w-64 shrink-0 border-l border-zinc-800/60 overflow-y-auto scrollbar-thin p-4 space-y-4">
           <div>
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
@@ -181,20 +193,53 @@ export default function ChatPage() {
               "Which region performs best?",
               "Find correlations in numeric columns",
             ].map((q, i) => (
-              <motion.div
+              <motion.button
                 key={q}
+                onClick={() => handleSuggestion(q)}
                 initial={{ opacity: 0, x: 12 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.06 }}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/60 mb-2 text-xs text-zinc-400 hover:text-white hover:border-zinc-700 cursor-pointer transition-all group"
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/60 mb-2 text-xs text-zinc-400 hover:text-white hover:border-zinc-700 cursor-pointer transition-all group w-full text-left"
               >
                 <Sparkles className="w-3 h-3 text-indigo-400 shrink-0" />
                 {q}
                 <ChevronRight className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-              </motion.div>
+              </motion.button>
             ))}
           </div>
         </div>
+
+        {/* ── Mobile Dataset Info Drawer ── */}
+        <AnimatePresence>
+          {mobileInfoOpen && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 xl:hidden"
+                onClick={() => setMobileInfoOpen(false)}
+              />
+              <motion.div
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "spring", damping: 28, stiffness: 280 }}
+                className="fixed inset-y-0 left-0 z-50 w-80 glass-strong border-r border-zinc-800/60 p-4 space-y-4 overflow-y-auto xl:hidden"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-semibold text-white">Dataset Info</p>
+                  <button onClick={() => setMobileInfoOpen(false)} className="btn-ghost p-1.5 rounded-lg">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <DatasetCard summary={summary} fileName={file_name} />
+                <ColumnList columns={summary.columns} search="" />
+                {insights?.length > 0 && <InsightCard insights={insights} />}
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
       </div>
     </DashboardLayout>

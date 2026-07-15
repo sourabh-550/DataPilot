@@ -5,6 +5,7 @@ from db.crud import create_session
 from services.file_service import validate_file, save_file, parse_file, get_file_summary
 from services.insight_service import generate_insights
 from auth.dependencies import get_current_user_optional
+from config import MAX_FILE_SIZE_MB
 import uuid
 
 router = APIRouter()
@@ -20,6 +21,15 @@ async def upload_file(
 
     session_id = str(uuid.uuid4())
     content = await file.read()
+
+    # Validate file size AFTER reading (before expensive processing)
+    max_bytes = MAX_FILE_SIZE_MB * 1024 * 1024
+    if len(content) > max_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Maximum size is {MAX_FILE_SIZE_MB}MB."
+        )
+
 
     try:
         file_path = save_file(session_id, file.filename, content)
