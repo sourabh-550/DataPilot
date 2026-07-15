@@ -48,9 +48,9 @@ app = FastAPI(
 )
 
 ALLOWED_ORIGINS = [
-    "https://datapilot-frontend.vercel.app",  # Production frontend
-    "http://localhost:5173",                   # Vite dev server
-    "http://localhost:4173",                   # Vite preview
+    "https://datapilot-one.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:4173",
     "http://127.0.0.1:5173",
 ]
 
@@ -58,8 +58,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(upload_router, prefix="/api", tags=["Upload"])
