@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from contextlib import asynccontextmanager
 from db.database import engine, Base
 from api.upload import router as upload_router
@@ -76,6 +77,24 @@ async def root():
     return {"message": "DataPilot API is running 🚀"}
 
 
-@app.get("/health")
-async def health():
-    return {"status": "alive", "service": "DataPilot Backend"}
+HEALTH_DB_TIMEOUT_SECONDS = 5
+
+
+async def _ping_database():
+    async with engine.connect() as conn:
+        await conn.execute(text("SELECT 1"))
+
+
+# Called every few minutes by an external monitor (UptimeRobot / cron-job.org).
+# The real query keeps Supabase active as well as Render, and makes the check
+# honest: it returns 503 if the database is unreachable, so the monitor alerts.
+# HEAD is accepted because some monitors send HEAD instead of GET.
+@app.api_route("/health", methods=["GET", "HEAD"])
+async def health(response: Response):
+    try:
+        await asyncio.wait_for(_ping_database(), timeout=HEALTH_DB_TIMEOUT_SECONDS)
+        return {"status": "alive", "service": "DataPilot Backend", "database": "ok"}
+    except Exception as e:
+        print(f"Health check: database unreachable: {e!r}")
+        response.status_code = 503
+        return {"status": "degraded", "service": "DataPilot Backend", "database": "unreachable"}
