@@ -141,6 +141,24 @@ def _check_code(code: str):
     return None
 
 
+def _round_floats(value):
+    """Round floats to 2 places so answers say 676.67, not 676.6666666666666."""
+    if isinstance(value, (pd.DataFrame, pd.Series)):
+        try:
+            return value.round(2)
+        except TypeError:  # non-numeric Series
+            return value
+    if isinstance(value, float):  # includes numpy float64
+        return round(value, 2)
+    if isinstance(value, dict):
+        return {k: _round_floats(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return type(value)(_round_floats(v) for v in value)
+    if hasattr(value, "dtype") and getattr(value.dtype, "kind", "") == "f":  # numpy float32 etc.
+        return round(float(value), 2)
+    return value
+
+
 def _install_audit_hook(state: dict):
     """Refuse dangerous operations while state['active'] is True (child process only)."""
 
@@ -178,7 +196,10 @@ def _run_in_child(code: str, df: pd.DataFrame, conn):
         state["active"] = True
         exec(code, namespace)  # noqa: S102
         # str() runs while still guarded — result objects can have custom __str__.
-        output = str(namespace["result"])[:_MAX_OUTPUT_CHARS] if "result" in namespace else _NO_RESULT_MESSAGE
+        if "result" in namespace:
+            output = str(_round_floats(namespace["result"]))[:_MAX_OUTPUT_CHARS]
+        else:
+            output = _NO_RESULT_MESSAGE
     except Exception as e:
         # Type + message only — a full traceback would leak server file paths.
         output = f"Code execution error: {type(e).__name__}: {e}"

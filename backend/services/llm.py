@@ -41,16 +41,24 @@ def _is_tool_use_failure(e: Exception) -> bool:
     return getattr(e, "status_code", None) == 400 and "tool_use_failed" in str(e)
 
 
+_RETRY_TEMPERATURE = 0.7
+
+
 def ask_llm(llm, messages) -> str:
     """Invoke the LLM and return its text, or raise LLMUnavailableError."""
-    attempts = 2  # one retry, only for the transient gpt-oss tool_use_failed error
+    # Retries only for the transient gpt-oss tool_use_failed error (~5% of calls,
+    # fails fast). Measured: one retry still left ~2 failures per 80 calls.
+    attempts = 3
     for attempt in range(1, attempts + 1):
         try:
-            response = llm.invoke(messages)
+            # The retry samples at a higher temperature: re-sending the identical
+            # request tends to reproduce the same malformed tool call.
+            overrides = {"temperature": _RETRY_TEMPERATURE} if attempt > 1 else {}
+            response = llm.invoke(messages, **overrides)
             break
         except Exception as e:
             if _is_tool_use_failure(e) and attempt < attempts:
-                print(f"LLM tool_use_failed (model={GROQ_MODEL}), retrying once")
+                print(f"LLM tool_use_failed (model={GROQ_MODEL}), retrying (attempt {attempt + 1}/{attempts})")
                 continue
             print(f"LLM call failed (model={GROQ_MODEL}): {type(e).__name__}: {e}")
             is_rate_limit = getattr(e, "status_code", None) == 429
