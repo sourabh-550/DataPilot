@@ -184,6 +184,7 @@ export default function SettingsPage() {
                             <input
                               type={key === "email" ? "email" : "text"}
                               value={val}
+                              placeholder={key === "email" ? "Guest account — no email" : ""}
                               disabled={key === "email"}
                               onChange={(e) =>
                                 setProfileForm({ ...profileForm, [key]: e.target.value })

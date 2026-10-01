@@ -16,6 +16,7 @@ import {
   MessageSquareCode,
   Loader2,
   AlertCircle,
+  UserRound,
 } from "lucide-react";
 
 /* ─────────────────────────────────────────────
@@ -295,7 +296,8 @@ export default function LoginPage() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
-  const { signIn, signUp, signInWithGoogle } = useAuth();
+  const [guestLoading, setGuestLoading] = useState(false);
+  const { signIn, signUp, signInWithGoogle, signInAsGuest } = useAuth();
   const navigate = useNavigate();
 
   /* ── UI state ── */
@@ -351,6 +353,20 @@ export default function LoginPage() {
     setError(null);
     const { error } = await signInWithGoogle();
     if (error) setError(error.message);
+  };
+
+  const handleGuestLogin = async () => {
+    setError(null);
+    setGuestLoading(true);
+    const { error } = await signInAsGuest();
+    setGuestLoading(false);
+    if (error) {
+      setError(error.message);
+      triggerShake();
+      return;
+    }
+    setSuccessState(true);
+    setTimeout(() => navigate("/"), 900);
   };
 
   const switchMode = () => {
@@ -656,6 +672,27 @@ export default function LoginPage() {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
               </svg>
               Continue with Google
+            </motion.button>
+
+            {/* ─── Guest Button ─── */}
+            <motion.button
+              type="button"
+              onClick={handleGuestLogin}
+              disabled={guestLoading}
+              whileHover={{ scale: guestLoading ? 1 : 1.015, y: guestLoading ? 0 : -1 }}
+              whileTap={{ scale: guestLoading ? 1 : 0.98 }}
+              className="w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl text-sm font-semibold mb-5 transition-all duration-200 disabled:opacity-60"
+              style={{
+                background: "rgba(39,39,42,0.6)",
+                color: "#E4E4E7",
+                border: "1px solid rgba(63,63,70,0.7)",
+              }}
+              aria-label="Try as guest"
+            >
+              {guestLoading
+                ? <Loader2 size={18} className="animate-spin" />
+                : <UserRound size={18} />}
+              Try as guest — no sign-up
             </motion.button>
 
             {/* ─── Divider ─── */}

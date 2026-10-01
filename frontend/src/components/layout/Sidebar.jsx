@@ -208,10 +208,11 @@ export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }
 
         {/* User Card */}
         {(() => {
+          const isGuest = Boolean(user?.is_anonymous);
           const displayName =
             user?.user_metadata?.full_name ||
             user?.user_metadata?.name ||
-            user?.email?.split("@")[0] ||
+            (isGuest ? "Guest" : user?.email?.split("@")[0]) ||
             "User";
           const initial = displayName.charAt(0).toUpperCase();
           return (
@@ -222,7 +223,7 @@ export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }
               {!collapsed && (
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-white truncate">{displayName}</p>
-                  <p className="text-[10px] text-zinc-500 truncate">{user?.email || ""}</p>
+                  <p className="text-[10px] text-zinc-500 truncate">{isGuest ? "Guest session" : (user?.email || "")}</p>
                 </div>
               )}
             </div>

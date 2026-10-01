@@ -45,6 +45,14 @@ export function AuthProvider({ children }) {
     return { data, error };
   };
 
+  // Guest mode — Supabase anonymous sign-in. The guest gets a real user id and JWT
+  // (so uploads/history work), but no email. Requires "Allow anonymous sign-ins"
+  // to be enabled in the Supabase dashboard.
+  const signInAsGuest = async () => {
+    const { data, error } = await supabase.auth.signInAnonymously();
+    return { data, error };
+  };
+
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     return { error };
@@ -53,9 +61,11 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     loading,
+    isGuest: Boolean(user?.is_anonymous),
     signUp,
     signIn,
     signInWithGoogle,
+    signInAsGuest,
     signOut,
   };
 

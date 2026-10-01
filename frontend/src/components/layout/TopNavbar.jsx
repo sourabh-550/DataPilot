@@ -26,14 +26,18 @@ const NOTIFICATIONS = [
 
 export default function TopNavbar({ title, subtitle, onMenuClick }) {
   const { theme, toggleTheme } = useTheme();
-  const { user, signOut } = useAuth();
+  const { user, isGuest, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Derive initials and email from Supabase user
-  const userEmail = user?.email ?? "analyst@datapilot.ai";
-  const userInitial = userEmail.charAt(0).toUpperCase();
-  const userName = user?.user_metadata?.full_name ?? userEmail.split("@")[0];
+  // Derive display name and subtitle from the Supabase user.
+  // Guests (anonymous sign-in) have email "" — use || so empty strings fall through.
+  const userEmail = isGuest ? "Guest session" : (user?.email || "");
+  const userName =
+    user?.user_metadata?.full_name ||
+    (isGuest ? "Guest" : user?.email?.split("@")[0]) ||
+    "User";
+  const userInitial = userName.charAt(0).toUpperCase();
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");

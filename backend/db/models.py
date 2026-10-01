@@ -6,7 +6,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(String, primary_key=True)         # UUID
-    email = Column(String, nullable=False, unique=True, index=True)
+    email = Column(String, nullable=True, unique=True, index=True)  # NULL for guest (anonymous) users
     name = Column(String, nullable=True)
     role = Column(String, nullable=True)           # e.g. "Data Analyst"
     company = Column(String, nullable=True)        # e.g. "DataPilot"

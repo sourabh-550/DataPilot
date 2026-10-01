@@ -28,6 +28,24 @@ def _decode_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
+async def _user_from_payload(payload: dict, db: AsyncSession):
+    """
+    Maps verified JWT claims to a DB user. Returns None if the token has no subject.
+    Guest (anonymous) users have a real `sub` but an empty `email`, so `sub` is the
+    only required claim — email is optional profile data.
+    """
+    user_id = payload.get("sub")
+    if not user_id:
+        return None
+
+    is_anonymous = payload.get("is_anonymous", False)
+    email = payload.get("email") or None  # anonymous tokens carry email = ""
+    metadata = payload.get("user_metadata") or {}
+    name = metadata.get("full_name") or metadata.get("name") or ("Guest" if is_anonymous else None)
+
+    return await get_or_create_user(db, email=email, name=name, user_id=user_id)
+
+
 async def get_current_user(
     authorization: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db),
@@ -38,14 +56,9 @@ async def get_current_user(
     token = authorization.split(" ", 1)[1]
     payload = _decode_token(token)
 
-    user_id = payload.get("sub")
-    email = payload.get("email")
-    name = payload.get("user_metadata", {}).get("full_name") or payload.get("user_metadata", {}).get("name")
-
-    if not user_id or not email:
+    user = await _user_from_payload(payload, db)
+    if user is None:
         raise HTTPException(status_code=401, detail="Token missing required claims")
-
-    user = await get_or_create_user(db, email=email, name=name, user_id=user_id)
     return user
 
 
@@ -62,12 +75,4 @@ async def get_current_user_optional(
     except HTTPException:
         return None
 
-    user_id = payload.get("sub")
-    email = payload.get("email")
-    name = payload.get("user_metadata", {}).get("full_name") or payload.get("user_metadata", {}).get("name")
-
-    if not user_id or not email:
-        return None
-
-    user = await get_or_create_user(db, email=email, name=name, user_id=user_id)
-    return user
+    return await _user_from_payload(payload, db)

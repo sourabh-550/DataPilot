@@ -33,10 +33,24 @@ async def get_user_by_email(db: AsyncSession, email: str):
     return result.scalar_one_or_none()
 
 
-async def get_or_create_user(db: AsyncSession, email: str, name: str = None, user_id: str = None):
-    existing = await get_user_by_email(db, email)
-    if existing:
-        return existing
+async def get_or_create_user(db: AsyncSession, email: str = None, name: str = None, user_id: str = None):
+    # Look up by Supabase user id first — it's stable and guests have no email.
+    if user_id:
+        existing = await get_user_by_id(db, user_id)
+        if existing:
+            # A guest who later links an email keeps the same id; record the email.
+            if email and not existing.email:
+                existing.email = email
+                await db.commit()
+                await db.refresh(existing)
+            return existing
+
+    # Fallback for older rows whose id may not match the Supabase id.
+    if email:
+        existing = await get_user_by_email(db, email)
+        if existing:
+            return existing
+
     return await create_user(db, email=email, name=name, user_id=user_id)
 
 
