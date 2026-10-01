@@ -40,6 +40,15 @@ def save_file(session_id: str, filename: str, content: bytes) -> str:
     return storage_path
 
 
+def delete_file(storage_path: str) -> None:
+    """
+    Permanently deletes an uploaded file from Supabase Storage.
+    Raises on failure. A path that no longer exists counts as success, so
+    sessions whose file is already gone can still be deleted.
+    """
+    _supabase.storage.from_(SUPABASE_BUCKET).remove([storage_path])
+
+
 def _download_bytes(storage_path: str) -> bytes:
     try:
         return _supabase.storage.from_(SUPABASE_BUCKET).download(storage_path)

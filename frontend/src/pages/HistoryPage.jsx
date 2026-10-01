@@ -5,6 +5,8 @@ import { getHistory, deleteSession } from "../services/api";
 import { timeAgo } from "../utils/formatters";
 import { useToast } from "../context/ToastContext";
 import { sessionPath } from "../hooks/useSessionData";
+import { useAuth } from "../context/AuthContext";
+import { removeRecentDataset } from "../utils/recentDatasets";
 import {
   History, Database, MessageSquare, Clock,
   Rows, Columns, ChevronRight, Upload,
@@ -15,6 +17,7 @@ import { useState, useEffect } from "react";
 export default function HistoryPage() {
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const { user } = useAuth();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -49,9 +52,10 @@ export default function HistoryPage() {
     try {
       await deleteSession(sessionId);
       setHistory((prev) => prev.filter((h) => h.session_id !== sessionId));
-      addToast("Dataset removed from history.", "success");
-    } catch {
-      addToast("Failed to delete session. Please try again.", "error");
+      removeRecentDataset(user?.id, sessionId); // drop it from the sidebar's cached list too
+      addToast("Dataset and its file were permanently deleted.", "success");
+    } catch (err) {
+      addToast(err.response?.data?.detail || "Failed to delete session. Please try again.", "error");
     }
   };
 

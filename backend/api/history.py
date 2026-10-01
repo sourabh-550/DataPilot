@@ -6,7 +6,7 @@ from db.database import get_db
 from db.models import Session, ChatHistory
 from db.crud import get_session
 from auth.dependencies import get_current_user_optional, ensure_session_access
-from services.file_service import parse_file, get_file_summary
+from services.file_service import parse_file, get_file_summary, delete_file
 from services.time_utils import to_utc_iso
 
 router = APIRouter()
@@ -90,6 +90,18 @@ async def delete_session(
     session = result.scalar_one_or_none()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    # Delete the uploaded file FIRST. If this fails, stop before touching the
+    # database: the user sees an error and can retry, instead of the session
+    # vanishing from History while the file silently stays in storage.
+    try:
+        delete_file(session.file_path)
+    except Exception as e:
+        print(f"Storage delete failed for {session.file_path}: {type(e).__name__}: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail="Couldn't delete the stored file, so nothing was deleted. Please try again.",
+        )
 
     # Delete child chat_history rows first — they have a FK to sessions.id
     # with no ON DELETE CASCADE configured, so deleting the session directly

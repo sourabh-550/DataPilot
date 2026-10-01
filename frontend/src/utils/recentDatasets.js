@@ -27,6 +27,16 @@ export function addRecentDataset(userId, entry) {
   }
 }
 
+export function removeRecentDataset(userId, sessionId) {
+  if (!userId) return;
+  try {
+    const rest = getRecentDatasets(userId).filter((d) => d.session_id !== sessionId);
+    localStorage.setItem(keyFor(userId), JSON.stringify(rest));
+  } catch {
+    /* ignore */
+  }
+}
+
 export function removeLegacyRecentDatasets() {
   try {
     localStorage.removeItem(LEGACY_KEY);
