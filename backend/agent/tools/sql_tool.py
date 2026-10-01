@@ -25,7 +25,7 @@ _DIALECT_NAMES = {
     "mssql": "Microsoft SQL Server (T-SQL)",
 }
 
-_BLOCKED_MESSAGE = "This request was blocked: only read-only SELECT queries are allowed."
+_BLOCKED_MESSAGE = "This request was blocked: only read-only SELECT queries are allowed"
 
 
 def _dialect_rules(dialect: str) -> str:
@@ -119,7 +119,7 @@ Rules:
         rejects the query, its error goes back to the LLM for a fixed query, up to
         MAX_CORRECTIONS times. Failed attempts are returned so the UI can show them.
         """
-        from services.sql_service import is_safe_query, execute_query
+        from services.sql_service import check_query, execute_query
 
         failed = []  # [{"sql": ..., "error": ...}] — every attempt that didn't work
         try:
@@ -128,8 +128,13 @@ Rules:
 
                 # A safety block is final: retrying would only produce some other
                 # query, not what the user asked for.
-                if not is_safe_query(sql_query):
-                    return json.dumps({"error": _BLOCKED_MESSAGE, "sql": sql_query, "attempts": failed})
+                blocked_reason = check_query(sql_query)
+                if blocked_reason:
+                    return json.dumps({
+                        "error": f"{_BLOCKED_MESSAGE} ({blocked_reason})",
+                        "sql": sql_query,
+                        "attempts": failed,
+                    })
 
                 try:
                     df = execute_query(engine, sql_query)
