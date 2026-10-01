@@ -55,7 +55,7 @@ const STATS = [
 const HERO_FACTS = [
   { label: "Chart types", value: "5" },
   { label: "Data sources", value: "CSV · Excel · SQLite" },
-  { label: "via Groq", value: "Llama 3.1" },
+  { label: "LLM inference", value: "Groq" },
 ];
 
 const QUICK_ACTIONS = [

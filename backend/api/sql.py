@@ -7,9 +7,6 @@ from services.sql_service import (
     save_db_file, execute_query, is_safe_query
 )
 from agent.tools.sql_tool import create_sql_tool
-from langchain_groq import ChatGroq
-from langchain_core.messages import HumanMessage, SystemMessage
-from config import GROQ_API_KEY
 from db.database import get_db
 from auth.dependencies import get_current_user_optional
 import json

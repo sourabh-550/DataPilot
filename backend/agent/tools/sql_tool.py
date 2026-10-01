@@ -3,16 +3,11 @@ import plotly.express as px
 import plotly
 import json
 from langchain.tools import StructuredTool
-from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
-from config import GROQ_API_KEY
+from services.llm import get_llm, ask_llm
 
 # Module-level LLM instance — shared across all SQL tool calls.
-_llm = ChatGroq(
-    groq_api_key=GROQ_API_KEY,
-    model_name="llama-3.1-8b-instant",
-    temperature=0,
-)
+_llm = get_llm(temperature=0)
 
 
 def create_sql_tool(engine, schema_text: str) -> StructuredTool:
@@ -31,12 +26,10 @@ Rules:
 - No markdown, no explanation, just the SQL query
 - Always add LIMIT 100 if no limit specified"""
 
-        response = _llm.invoke([
+        sql_query = ask_llm(_llm, [
             SystemMessage(content=system),
             HumanMessage(content=question)
         ])
-
-        sql_query = response.content.strip()
         sql_query = sql_query.replace("```sql", "").replace("```", "").strip()
         return sql_query
 
@@ -102,6 +95,7 @@ Rules:
             })
 
         except Exception as e:
+            # LLMUnavailableError's text is already user-safe; DB errors are shown as-is for now.
             return json.dumps({"error": str(e)})
 
     return StructuredTool.from_function(

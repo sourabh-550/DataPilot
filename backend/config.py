@@ -5,6 +5,12 @@ load_dotenv()
 
 # LLM Config
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+# Groq retires models regularly (llama-3.1-8b-instant was shut down Aug 2026),
+# so the model is configuration, not code: swap it with a Render env var, no code change.
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
+# For reasoning models (gpt-oss): low / medium / high. "low" keeps latency and
+# token usage down. Set to an empty string when using a non-reasoning model.
+GROQ_REASONING_EFFORT = os.getenv("GROQ_REASONING_EFFORT", "low")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 DEFAULT_LLM = "groq"   # Options: "groq" or "gemini"
 

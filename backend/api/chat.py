@@ -52,7 +52,9 @@ async def chat(
         response = agent.invoke({"input": request.message})
         answer = response.get("output", "Sorry, I could not process that.")
     except Exception as e:
-        answer = f"Agent error: {str(e)}"
+        # Raw errors go to the log only; users get a clean message.
+        print(f"Chat agent crashed: {type(e).__name__}: {e}")
+        answer = "Sorry, something went wrong while analyzing your data. Please try again."
 
     # Check if response contains a chart
     chart_json = None

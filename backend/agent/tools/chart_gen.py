@@ -15,13 +15,15 @@ def create_chart_gen_tool(df: pd.DataFrame) -> StructuredTool:
                 return "Error: Use format 'chart_type|x_column|y_column|title'"
 
             chart_type = parts[0].strip().lower()
+            chart_type = {"hist": "histogram"}.get(chart_type, chart_type)  # common LLM shorthand
             x_col = parts[1].strip()
             y_col = parts[2].strip()
             title = parts[3].strip() if len(parts) > 3 else f"{y_col} by {x_col}"
 
             if x_col not in df.columns:
                 return f"Error: Column '{x_col}' not found. Available: {list(df.columns)}"
-            if chart_type != "histogram" and y_col not in df.columns:
+            # histogram and pie only use x (pie counts x's values), so y may be empty
+            if chart_type not in ("histogram", "pie") and y_col not in df.columns:
                 return f"Error: Column '{y_col}' not found. Available: {list(df.columns)}"
 
             if chart_type == "bar":
@@ -44,7 +46,9 @@ def create_chart_gen_tool(df: pd.DataFrame) -> StructuredTool:
             return f"CHART_JSON:{chart_json}"
 
         except Exception as e:
-            return f"Chart generation error: {str(e)}\n{traceback.format_exc()}"
+            # Log the traceback server-side; the user-facing text must not leak file paths.
+            print(f"Chart generation failed: {traceback.format_exc()}")
+            return f"Sorry, I couldn't build that chart ({type(e).__name__}). Try different columns or a different chart type."
 
     return StructuredTool.from_function(
         func=chart_gen,

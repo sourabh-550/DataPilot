@@ -1,16 +1,11 @@
 import pandas as pd
-from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage
-from config import GROQ_API_KEY
+from services.llm import get_llm, ask_llm, LLMUnavailableError
 import json
 import math
 
 # Module-level LLM instance — avoids re-creating the client on every upload request.
-_llm = ChatGroq(
-    groq_api_key=GROQ_API_KEY,
-    model_name="llama-3.1-8b-instant",
-    temperature=0.3,
-)
+_llm = get_llm(temperature=0.3, json_mode=True)
 
 
 def _safe_stat(value) -> str:
@@ -62,24 +57,29 @@ Dataset Summary:
 
 Rules:
 - Each insight must be a single clear sentence
-- Include specific numbers and values from the data
+- Use ONLY numbers that appear in the summary above — do not multiply, add or
+  otherwise calculate new figures (they will be wrong)
 - Focus on business value (revenue, trends, top performers, anomalies)
-- Return ONLY a JSON array of 4 strings, nothing else
-- Example format: ["Insight 1 here", "Insight 2 here", "Insight 3 here", "Insight 4 here"]
+- Return ONLY a JSON object with an "insights" key holding 4 strings, nothing else
+- Example format: {{"insights": ["Insight 1 here", "Insight 2 here", "Insight 3 here", "Insight 4 here"]}}
 
 Generate the insights now:"""
 
     try:
-        response = _llm.invoke([HumanMessage(content=prompt)])
-        raw = response.content.strip()
+        raw = ask_llm(_llm, [HumanMessage(content=prompt)])
 
         # Clean response if LLM adds markdown
         raw = raw.replace("```json", "").replace("```", "").strip()
-        insights = json.loads(raw)
+        parsed = json.loads(raw)
+        insights = parsed.get("insights") if isinstance(parsed, dict) else parsed
 
-        if isinstance(insights, list):
-            return insights[:5]  # Max 5 insights
+        if isinstance(insights, list) and insights:
+            return [str(i) for i in insights[:5]]  # Max 5 insights
         return ["Could not generate insights for this dataset."]
 
+    except LLMUnavailableError:
+        # Upload still succeeds — insights are a bonus, not a requirement.
+        return ["AI insights are unavailable right now — you can still explore and chat with your data."]
     except Exception as e:
-        return [f"Insight generation error: {str(e)}"]
+        print(f"Insight generation failed: {type(e).__name__}: {e}")
+        return ["Could not generate insights for this dataset."]
