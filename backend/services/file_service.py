@@ -111,8 +111,12 @@ def get_file_summary(df: pd.DataFrame) -> dict:
     JSONResponse will raise 'ValueError: Out of range float values are not
     JSON compliant'.
     """
-    safe_head = df.head(5).replace([np.inf, -np.inf], np.nan)
-    safe_head = safe_head.where(pd.notnull(safe_head), None)
+    # Not df.where(notnull, None): on float columns pandas puts NaN straight back,
+    # which made any CSV with a blank number in its first 5 rows fail to upload.
+    sample_rows = [
+        {col: _json_safe_value(v) for col, v in row.items()}
+        for row in df.head(5).to_dict(orient="records")
+    ]
 
     return {
         "row_count": len(df),
@@ -130,5 +134,5 @@ def get_file_summary(df: pd.DataFrame) -> dict:
             }
             for col in df.columns
         ],
-        "sample_rows": safe_head.to_dict(orient="records")
+        "sample_rows": sample_rows
     }
