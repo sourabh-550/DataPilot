@@ -1,6 +1,10 @@
 import ast
 import builtins
+import gc
+import multiprocessing as mp
+import os
 import re
+import sys
 import pandas as pd
 from langchain.tools import StructuredTool
 
@@ -42,6 +46,48 @@ _BLOCKED_NAME = re.compile(
 
 _MAX_CODE_LENGTH = 2000  # Characters — generous for any legitimate pandas operation
 _MAX_OUTPUT_CHARS = 5000
+_NO_RESULT_MESSAGE = (
+    "Code executed successfully but no 'result' variable found. "
+    "Use `result = ...` to store your output."
+)
+
+# ── Runtime isolation ─────────────────────────────────────────────────────────
+# Generated code runs in a short-lived child process, which gives us:
+#   * a hard time limit — the child is killed if it overruns, even inside a
+#     C-level loop that a signal or trace-based timeout could not interrupt
+#   * no secrets — the child clears its environment before running anything
+#   * an audit hook (PEP 578) that only ever exists in the child, so the web
+#     server process itself is never affected by it
+_TIME_LIMIT_SECONDS = 10
+
+# fork (Linux / Render) is copy-on-write and starts in milliseconds. spawn is the
+# fallback for Windows dev; it re-imports pandas first, so it gets extra startup time.
+if "fork" in mp.get_all_start_methods():
+    _MP_CONTEXT, _STARTUP_ALLOWANCE = mp.get_context("fork"), 0
+else:
+    _MP_CONTEXT, _STARTUP_ALLOWANCE = mp.get_context("spawn"), 15
+
+# Reads are allowed only inside the Python installation / virtualenv (stdlib and
+# site-packages, needed if pandas lazily imports a module). Project files, .env,
+# /proc and /etc are all outside these roots.
+_READ_ROOTS = tuple(sorted({
+    os.path.join(os.path.abspath(p), "")
+    for p in (sys.prefix, sys.base_prefix, sys.exec_prefix, sys.base_exec_prefix)
+}))
+
+# Audit events refused while generated code runs: network, processes, filesystem
+# changes, directory listings, native code, and frame inspection.
+_DENIED_AUDIT_EVENTS = (
+    "socket.", "urllib.", "http.", "ftplib.", "smtplib.", "webbrowser.",
+    "subprocess.", "os.system", "os.exec", "os.spawn", "os.posix_spawn",
+    "os.fork", "os.forkpty", "os.kill", "os.killpg", "os.startfile",
+    "os.remove", "os.unlink", "os.rename", "os.rmdir", "os.mkdir", "os.chmod",
+    "os.chown", "os.link", "os.symlink", "os.truncate", "os.utime",
+    "os.putenv", "os.unsetenv", "os.chdir", "os.listdir", "os.scandir",
+    "glob.", "shutil.", "ctypes.", "sys._getframe", "sys.settrace",
+    "sys.setprofile", "sys.addaudithook",
+)
+_WRITE_FLAGS = os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_APPEND | os.O_TRUNC
 
 
 def _check_code(code: str):
@@ -95,6 +141,76 @@ def _check_code(code: str):
     return None
 
 
+def _install_audit_hook(state: dict):
+    """Refuse dangerous operations while state['active'] is True (child process only)."""
+
+    def hook(event, args):
+        if not state["active"]:
+            return
+        if event == "open":
+            path, mode, flags = args
+            if isinstance(path, int):
+                raise PermissionError("sandbox: opening file descriptors is not allowed")
+            full_path = os.path.abspath(os.fsdecode(os.fspath(path)))
+            writing = bool(mode and any(c in mode for c in "wax+")) or bool(flags & _WRITE_FLAGS)
+            if writing or not full_path.startswith(_READ_ROOTS):
+                raise PermissionError("sandbox: file access is not allowed")
+        elif event.startswith(_DENIED_AUDIT_EVENTS):
+            raise PermissionError(f"sandbox: '{event}' is not allowed")
+
+    sys.addaudithook(hook)
+
+
+def _run_in_child(code: str, df: pd.DataFrame, conn):
+    """Child-process entry point: strip secrets, arm the audit hook, run, report back."""
+    # A forked child shares the server's open DB/HTTP sockets; never let garbage
+    # collection run their finalizers here. The child lives for seconds at most.
+    gc.disable()
+    os.environ.clear()  # API keys and DB URLs are never needed by generated code
+
+    state = {"active": False}
+    _install_audit_hook(state)
+
+    # One namespace for globals AND locals: with separate dicts, lambdas and
+    # comprehensions can't see variables the code defined earlier.
+    namespace = {"__builtins__": _SAFE_BUILTINS, "df": df, "pd": pd}
+    try:
+        state["active"] = True
+        exec(code, namespace)  # noqa: S102
+        # str() runs while still guarded — result objects can have custom __str__.
+        output = str(namespace["result"])[:_MAX_OUTPUT_CHARS] if "result" in namespace else _NO_RESULT_MESSAGE
+    except Exception as e:
+        # Type + message only — a full traceback would leak server file paths.
+        output = f"Code execution error: {type(e).__name__}: {e}"
+    finally:
+        state["active"] = False
+
+    conn.send(output)
+    conn.close()
+
+
+def _execute_isolated(code: str, df: pd.DataFrame) -> str:
+    """Run code in a child process; kill it if it exceeds the time limit."""
+    reader, writer = _MP_CONTEXT.Pipe(duplex=False)
+    proc = _MP_CONTEXT.Process(target=_run_in_child, args=(code, df, writer), daemon=True)
+    proc.start()
+    writer.close()  # keep only the child's copy, so we get EOF if the child dies
+    try:
+        if reader.poll(_TIME_LIMIT_SECONDS + _STARTUP_ALLOWANCE):
+            return reader.recv()
+        return (
+            f"Code execution refused: time limit of {_TIME_LIMIT_SECONDS}s exceeded. "
+            "Use vectorized pandas operations instead of loops."
+        )
+    except EOFError:
+        return "Code execution error: the analysis process stopped unexpectedly (out of memory?)."
+    finally:
+        reader.close()
+        if proc.is_alive():
+            proc.kill()
+        proc.join(timeout=5)
+
+
 def create_python_exec_tool(df: pd.DataFrame) -> StructuredTool:
 
     def python_exec(code: str) -> str:
@@ -107,26 +223,14 @@ def create_python_exec_tool(df: pd.DataFrame) -> StructuredTool:
                 f"({len(code)} chars, max {_MAX_CODE_LENGTH})."
             )
 
+        # Layer 1 — static check (fast, clear error messages for the LLM)
         reason = _check_code(code)
         if reason:
             return f"Code execution refused: {reason}."
 
-        # --- Execute in a restricted environment ---
-        # One namespace for globals AND locals: with separate dicts, lambdas and
-        # comprehensions can't see variables the code defined earlier.
-        namespace = {"__builtins__": _SAFE_BUILTINS, "df": df.copy(), "pd": pd}
-        try:
-            exec(code, namespace)  # noqa: S102
-        except Exception as e:
-            # Type + message only — a full traceback would leak server file paths.
-            return f"Code execution error: {type(e).__name__}: {e}"
-
-        if "result" in namespace:
-            return str(namespace["result"])[:_MAX_OUTPUT_CHARS]
-        return (
-            "Code executed successfully but no 'result' variable found. "
-            "Use `result = ...` to store your output."
-        )
+        # Layer 2 — isolated child process with an audit hook and a time limit.
+        # The child gets its own copy of df, so the original is never modified.
+        return _execute_isolated(code, df)
 
     return StructuredTool.from_function(
         func=python_exec,
