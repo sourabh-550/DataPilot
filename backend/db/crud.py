@@ -68,6 +68,12 @@ async def update_user_profile(
 async def create_session(db: AsyncSession, session_id: str, file_name: str,
                           file_path: str, file_type: str,
                           row_count: int, col_count: int, user_id: str = None):
+    # expires_at is TIMESTAMP WITHOUT TIME ZONE, and asyncpg rejects aware
+    # datetimes for it — so compute in UTC, then drop tzinfo (column stores UTC).
+    expires_at = (
+        datetime.now(timezone.utc) + timedelta(hours=SESSION_EXPIRY_HOURS)
+    ).replace(tzinfo=None)
+
     session = Session(
         id=session_id,
         user_id=user_id,
@@ -76,7 +82,7 @@ async def create_session(db: AsyncSession, session_id: str, file_name: str,
         file_type=file_type,
         row_count=row_count,
         col_count=col_count,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=SESSION_EXPIRY_HOURS)
+        expires_at=expires_at
     )
     db.add(session)
     await db.commit()
