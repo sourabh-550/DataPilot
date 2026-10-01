@@ -48,6 +48,7 @@ Rules:
 - Use "answer" for simple questions about the data
 - For chart params format: chart_type|x_column|y_column|title
 - For code params: valid pandas code, store output in 'result' variable
+- In code: df and pd are already loaded; do not import anything, read or write files, or use df.query/eval (use boolean masks instead)
 - Return ONLY the JSON, nothing else"""
 
         response = self.llm.invoke([
