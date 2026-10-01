@@ -30,6 +30,7 @@ npm-debug.log*
 # ── OS Files ────────────────────────
 .DS_Store
 Thumbs.db
+CLAUDE.md
 
 # ── VS Code / Editor ────────────────
 .vscode/
