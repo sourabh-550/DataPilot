@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Search,
-  Bell,
   Sun,
   Moon,
   Menu,
@@ -11,18 +10,11 @@ import {
   Settings,
   LogOut,
   User,
-  Sparkles,
   Zap,
   X,
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
-
-const NOTIFICATIONS = [
-  { id: 1, title: "Analysis Complete", desc: "sales_data.xlsx processed", time: "2m ago", unread: true, color: "text-indigo-400", bg: "bg-indigo-500/10" },
-  { id: 2, title: "AI Insight Ready", desc: "3 anomalies detected in Q4 data", time: "15m ago", unread: true, color: "text-emerald-400", bg: "bg-emerald-500/10" },
-  { id: 3, title: "Export Ready", desc: "Monthly report PDF generated", time: "1h ago", unread: false, color: "text-cyan-400", bg: "bg-cyan-500/10" },
-];
 
 export default function TopNavbar({ title, subtitle, onMenuClick }) {
   const { theme, toggleTheme } = useTheme();
@@ -41,10 +33,8 @@ export default function TopNavbar({ title, subtitle, onMenuClick }) {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
-  const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const searchRef = useRef(null);
-  const notifRef = useRef(null);
   const profileRef = useRef(null);
 
   const handleSignOut = async () => {
@@ -53,12 +43,9 @@ export default function TopNavbar({ title, subtitle, onMenuClick }) {
     navigate("/login");
   };
 
-  const unreadCount = NOTIFICATIONS.filter(n => n.unread).length;
-
   // Click outside handler
   useEffect(() => {
     const handler = (e) => {
-      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
       if (profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false);
     };
     document.addEventListener("mousedown", handler);
@@ -154,60 +141,6 @@ export default function TopNavbar({ title, subtitle, onMenuClick }) {
           <span className="text-xs font-medium text-emerald-400">AI Ready</span>
         </div>
 
-        {/* Notifications */}
-        <div className="relative" ref={notifRef}>
-          <button
-            onClick={() => { setNotifOpen(!notifOpen); setProfileOpen(false); }}
-            className="relative btn-ghost p-2 rounded-xl border border-zinc-800 hover:border-zinc-700"
-          >
-            <Bell className="w-4 h-4" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-indigo-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center">
-                {unreadCount}
-              </span>
-            )}
-          </button>
-
-          <AnimatePresence>
-            {notifOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                transition={{ duration: 0.15 }}
-                className="absolute right-0 top-full mt-2 w-80 glass-strong border border-zinc-800 rounded-2xl shadow-card overflow-hidden z-50"
-              >
-                <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-white">Notifications</h3>
-                  <span className="badge-primary text-[10px]">{unreadCount} new</span>
-                </div>
-                <div className="divide-y divide-zinc-800/60">
-                  {NOTIFICATIONS.map((n) => (
-                    <div key={n.id} className={`px-4 py-3 flex gap-3 hover:bg-white/[0.02] transition-colors ${n.unread ? "bg-indigo-500/[0.03]" : ""}`}>
-                      <div className={`w-8 h-8 rounded-lg ${n.bg} flex items-center justify-center shrink-0`}>
-                        <Sparkles className={`w-4 h-4 ${n.color}`} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-white flex items-center gap-2">
-                          {n.title}
-                          {n.unread && <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />}
-                        </p>
-                        <p className="text-xs text-zinc-500 truncate">{n.desc}</p>
-                        <p className="text-[10px] text-zinc-600 mt-0.5">{n.time}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="px-4 py-3 border-t border-zinc-800">
-                  <button className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
-                    Mark all as read
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
         {/* Theme Toggle */}
         <motion.button
           onClick={toggleTheme}
@@ -225,7 +158,7 @@ export default function TopNavbar({ title, subtitle, onMenuClick }) {
         {/* Profile */}
         <div className="relative" ref={profileRef}>
           <button
-            onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false); }}
+            onClick={() => setProfileOpen(!profileOpen)}
             className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl border border-zinc-800 hover:border-zinc-700 transition-all"
           >
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold shadow-glow-sm">

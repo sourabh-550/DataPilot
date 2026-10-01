@@ -2,21 +2,20 @@ import { useEffect, useRef, useState } from "react";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/layout/DashboardLayout";
+import { getDashboard } from "../services/api";
+import { timeAgo } from "../utils/formatters";
 import {
   Upload,
   MessageSquare,
   Database,
   BarChart3,
   Sparkles,
-  TrendingUp,
   ArrowRight,
   Zap,
   FileSpreadsheet,
   Brain,
   ChevronRight,
-  Activity,
   Clock,
-  CheckCircle2,
   Code2,
 } from "lucide-react";
 
@@ -43,83 +42,55 @@ function AnimatedCounter({ value, suffix = "", duration = 1.5 }) {
   return <span>{display}{suffix}</span>;
 }
 
-// ─── Stats Data ───────────────────────────────────────────────────────────────
+// ─── Stats (real per-user numbers from GET /api/dashboard) ────────────────────
 const STATS = [
-  {
-    label: "Datasets Uploaded",
-    value: 24,
-    change: "+12%",
-    positive: true,
-    icon: Database,
-    color: "indigo",
-    gradient: "from-indigo-500 to-violet-600",
-    glow: "rgba(99,102,241,0.3)",
-    bg: "bg-indigo-500/10",
-    text: "text-indigo-400",
-    border: "border-indigo-500/20",
-  },
-  {
-    label: "Queries Executed",
-    value: 1847,
-    change: "+28%",
-    positive: true,
-    icon: MessageSquare,
-    color: "cyan",
-    gradient: "from-cyan-500 to-blue-600",
-    glow: "rgba(6,182,212,0.3)",
-    bg: "bg-cyan-500/10",
-    text: "text-cyan-400",
-    border: "border-cyan-500/20",
-  },
-  {
-    label: "Charts Generated",
-    value: 312,
-    change: "+18%",
-    positive: true,
-    icon: BarChart3,
-    color: "violet",
-    gradient: "from-violet-500 to-purple-600",
-    glow: "rgba(139,92,246,0.3)",
-    bg: "bg-violet-500/10",
-    text: "text-violet-400",
-    border: "border-violet-500/20",
-  },
-  {
-    label: "AI Insights",
-    value: 96,
-    change: "+45%",
-    positive: true,
-    icon: Sparkles,
-    color: "emerald",
-    gradient: "from-emerald-500 to-teal-600",
-    glow: "rgba(34,197,94,0.3)",
-    bg: "bg-emerald-500/10",
-    text: "text-emerald-400",
-    border: "border-emerald-500/20",
-  },
+  { key: "datasets", label: "Datasets Uploaded", icon: Database, bg: "bg-indigo-500/10", text: "text-indigo-400", border: "border-indigo-500/20" },
+  { key: "rows_uploaded", label: "Rows Uploaded", icon: FileSpreadsheet, bg: "bg-cyan-500/10", text: "text-cyan-400", border: "border-cyan-500/20" },
+  { key: "questions", label: "Questions Asked", icon: MessageSquare, bg: "bg-violet-500/10", text: "text-violet-400", border: "border-violet-500/20" },
+  { key: "charts", label: "Charts Generated", icon: BarChart3, bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20" },
+];
+
+// Facts about the product, not performance claims — keep these verifiable.
+// "5 chart types" = bar, line, scatter, pie, histogram (backend/agent/tools/chart_gen.py).
+const HERO_FACTS = [
+  { label: "Chart types", value: "5" },
+  { label: "Data sources", value: "CSV · Excel · SQLite" },
+  { label: "via Groq", value: "Llama 3.1" },
 ];
 
 const QUICK_ACTIONS = [
   { label: "Upload Dataset", desc: "CSV, Excel up to 10MB", icon: Upload, path: "/upload", color: "indigo", gradient: "from-indigo-500 to-violet-600" },
   { label: "Start AI Chat", desc: "Ask questions in plain English", icon: MessageSquare, path: "/chat", color: "cyan", gradient: "from-cyan-500 to-blue-600" },
   { label: "SQL Workspace", desc: "Natural language to SQL", icon: Code2, path: "/sql", color: "violet", gradient: "from-violet-500 to-purple-600" },
-  { label: "Visualizations", desc: "Create beautiful charts", icon: BarChart3, path: "/visualizations", color: "emerald", gradient: "from-emerald-500 to-teal-600" },
-];
-
-const RECENT_ACTIVITY = [
-  { icon: CheckCircle2, label: "Uploaded sales_q4_2024.xlsx", time: "2 min ago", color: "text-emerald-400", bg: "bg-emerald-500/10" },
-  { icon: Brain, label: "AI analyzed revenue trends — 5 insights found", time: "15 min ago", color: "text-indigo-400", bg: "bg-indigo-500/10" },
-  { icon: BarChart3, label: "Generated bar chart for monthly profit", time: "32 min ago", color: "text-violet-400", bg: "bg-violet-500/10" },
-  { icon: Code2, label: "SQL: SELECT city, SUM(revenue) — 48 rows", time: "1h ago", color: "text-cyan-400", bg: "bg-cyan-500/10" },
-  { icon: Upload, label: "Uploaded customer_data.csv", time: "3h ago", color: "text-amber-400", bg: "bg-amber-500/10" },
+  { label: "Visualizations", desc: "See the supported chart types", icon: BarChart3, path: "/visualizations", color: "emerald", gradient: "from-emerald-500 to-teal-600" },
 ];
 
 const FEATURES = [
-  { icon: Brain, title: "Natural Language AI", desc: "Ask questions in plain English — AI converts to SQL instantly", gradient: "from-indigo-500 to-violet-600" },
-  { icon: BarChart3, title: "Smart Visualizations", desc: "Auto-generated charts from your data queries", gradient: "from-cyan-500 to-blue-600" },
-  { icon: Zap, title: "Instant Insights", desc: "Pattern detection and business intelligence in seconds", gradient: "from-emerald-500 to-teal-600" },
-  { icon: FileSpreadsheet, title: "Multi-format Support", desc: "Upload CSV, Excel, and connect to SQL databases", gradient: "from-violet-500 to-purple-600" },
+  { icon: Brain, title: "Natural Language AI", desc: "Ask questions in plain English — the AI writes and runs pandas code on your dataset", gradient: "from-indigo-500 to-violet-600" },
+  { icon: BarChart3, title: "Smart Visualizations", desc: "Bar, line, scatter, pie and histogram charts from a plain-English request", gradient: "from-cyan-500 to-blue-600" },
+  { icon: Zap, title: "AI Insights", desc: "Four AI-generated business insights for every dataset you upload", gradient: "from-emerald-500 to-teal-600" },
+  { icon: FileSpreadsheet, title: "Multi-format Support", desc: "CSV and Excel uploads, plus SQLite databases queried with natural-language SQL", gradient: "from-violet-500 to-purple-600" },
 ];
+
+// Maps one /api/dashboard activity entry to what the Recent Activity list shows.
+function describeActivity(a) {
+  if (a.type === "upload") {
+    return {
+      icon: Upload,
+      label: `Uploaded ${a.file_name}`,
+      detail: a.row_count != null ? `${a.row_count.toLocaleString()} rows` : null,
+      color: "text-emerald-400",
+      bg: "bg-emerald-500/10",
+    };
+  }
+  return {
+    icon: MessageSquare,
+    label: `Asked “${a.text}”`,
+    detail: a.file_name,
+    color: "text-indigo-400",
+    bg: "bg-indigo-500/10",
+  };
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -133,6 +104,18 @@ const itemVariants = {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const [dashboard, setDashboard] = useState(null);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getDashboard()
+      .then((data) => { if (!cancelled) setDashboard(data); })
+      .catch(() => { if (!cancelled) setLoadError(true); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const activity = dashboard?.recent_activity ?? [];
 
   return (
     <DashboardLayout title="Dashboard" subtitle="Welcome back — your AI data workspace">
@@ -212,11 +195,7 @@ export default function DashboardPage() {
 
             {/* Mini stats */}
             <div className="flex flex-wrap gap-6 mt-10">
-              {[
-                { label: "Accuracy Rate", value: "99.8%" },
-                { label: "Avg Response", value: "<2s" },
-                { label: "Chart Types", value: "12+" },
-              ].map((s, i) => (
+              {HERO_FACTS.map((s, i) => (
                 <motion.div
                   key={s.label}
                   initial={{ opacity: 0, y: 8 }}
@@ -250,24 +229,13 @@ export default function DashboardPage() {
                 <div className={`w-11 h-11 rounded-xl ${stat.bg} border ${stat.border} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
                   <stat.icon className={`w-5 h-5 ${stat.text}`} />
                 </div>
-                <span className="badge-success text-xs">
-                  <TrendingUp className="w-3 h-3" />
-                  {stat.change}
-                </span>
               </div>
               <div className="text-3xl font-bold text-white mb-1">
-                <AnimatedCounter value={stat.value} duration={1.2 + i * 0.2} />
+                {dashboard
+                  ? <AnimatedCounter value={dashboard.stats[stat.key] ?? 0} duration={1.2 + i * 0.2} />
+                  : <span className="text-zinc-600">—</span>}
               </div>
               <p className="text-sm text-zinc-500">{stat.label}</p>
-              {/* Progress bar */}
-              <div className="mt-3 h-1 bg-zinc-800 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min((stat.value / 2000) * 100 + 30, 95)}%` }}
-                  transition={{ delay: 0.5 + i * 0.1, duration: 1, ease: "easeOut" }}
-                  className={`h-full rounded-full bg-gradient-to-r ${stat.gradient}`}
-                />
-              </div>
             </motion.div>
           ))}
         </motion.section>
@@ -332,26 +300,40 @@ export default function DashboardPage() {
               </button>
             </div>
             <div className="card rounded-2xl divide-y divide-zinc-800/60 overflow-hidden">
-              {RECENT_ACTIVITY.map((item, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: 12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.6 + i * 0.07 }}
-                  className="flex items-start gap-3 px-4 py-3.5 hover:bg-white/[0.02] transition-colors"
-                >
-                  <div className={`w-8 h-8 rounded-lg ${item.bg} flex items-center justify-center shrink-0 mt-0.5`}>
-                    <item.icon className={`w-4 h-4 ${item.color}`} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm text-zinc-300 leading-snug">{item.label}</p>
-                    <p className="text-xs text-zinc-600 flex items-center gap-1 mt-0.5">
-                      <Clock className="w-3 h-3" />
-                      {item.time}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
+              {activity.length === 0 && (
+                <p className="px-4 py-6 text-sm text-zinc-500 text-center">
+                  {loadError
+                    ? "Couldn't load your activity. Please refresh."
+                    : dashboard
+                      ? "No activity yet — upload a dataset to get started."
+                      : "Loading…"}
+                </p>
+              )}
+              {activity.map((entry, i) => {
+                const item = describeActivity(entry);
+                return (
+                  <motion.div
+                    key={`${entry.type}-${entry.created_at}-${i}`}
+                    initial={{ opacity: 0, x: 12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 + i * 0.07 }}
+                    className="flex items-start gap-3 px-4 py-3.5 hover:bg-white/[0.02] transition-colors"
+                  >
+                    <div className={`w-8 h-8 rounded-lg ${item.bg} flex items-center justify-center shrink-0 mt-0.5`}>
+                      <item.icon className={`w-4 h-4 ${item.color}`} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-zinc-300 leading-snug truncate">{item.label}</p>
+                      <p className="text-xs text-zinc-600 flex items-center gap-1 mt-0.5 min-w-0">
+                        <Clock className="w-3 h-3 shrink-0" />
+                        <span className="truncate">
+                          {timeAgo(entry.created_at)}{item.detail ? ` · ${item.detail}` : ""}
+                        </span>
+                      </p>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           </motion.section>
         </div>

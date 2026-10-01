@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { clearRecentDatasets, removeLegacyRecentDatasets } from "../utils/recentDatasets";
 
 const AuthContext = createContext();
 
@@ -8,15 +9,20 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // The old unscoped cache could hold another account's datasets — drop it.
+    removeLegacyRecentDatasets();
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    // Listen for auth changes
+    // Listen for auth changes. SIGNED_OUT fires for every sign-out path
+    // (menu button, expired token via the 401 interceptor), so clear here.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
+        if (event === "SIGNED_OUT") clearRecentDatasets();
         setUser(session?.user ?? null);
         setLoading(false);
       }

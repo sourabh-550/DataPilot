@@ -6,7 +6,6 @@ import {
   PieChart,
   TrendingUp,
   ScatterChart,
-  Grid3x3,
   Activity,
   Sparkles,
   Download,
@@ -77,26 +76,6 @@ const CHART_TYPES = [
     ),
   },
   {
-    icon: Grid3x3,
-    label: "Heatmap",
-    desc: "Show data density and patterns",
-    gradient: "from-amber-500 to-orange-600",
-    glow: "",
-    preview: (
-      <svg viewBox="0 0 100 70" className="w-full h-full">
-        {[...Array(5)].map((_, r) => (
-          [...Array(7)].map((_, c) => {
-            const intensity = Math.random();
-            return (
-              <rect key={`${r}-${c}`} x={4 + c * 14} y={4 + r * 13} width="12" height="11" rx="2"
-                fill={`rgba(245,158,11,${0.1 + intensity * 0.7})`} />
-            );
-          })
-        ))}
-      </svg>
-    ),
-  },
-  {
     icon: Activity,
     label: "Histogram",
     desc: "Analyze data distributions",
@@ -126,7 +105,7 @@ export default function VisualizationsPage() {
   const [selected, setSelected] = useState(null);
 
   return (
-    <DashboardLayout title="Visualizations" subtitle="Create beautiful charts from your data">
+    <DashboardLayout title="Visualizations" subtitle="Chart types the AI can create from your data">
       <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-8">
 
         {/* Header */}
@@ -144,7 +123,7 @@ export default function VisualizationsPage() {
               Visualize Your <span className="gradient-text">Data</span>
             </h2>
             <p className="text-zinc-400 text-sm">
-              Choose a chart type to visualize your data. AI auto-selects the best chart for each query.
+              These are the 5 chart types DataPilot supports. Ask for one in AI Chat — e.g. "bar chart of sales by region".
             </p>
           </div>
           <div className="flex gap-2 shrink-0">

@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { getRecentDatasets } from "../../utils/recentDatasets";
 import {
   LayoutDashboard,
   Upload,
@@ -39,14 +39,8 @@ export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const [history, setHistory] = useState([]);
-
-  useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem("datapilot-datasets") || "[]");
-      setHistory(stored.slice(0, 5));
-    } catch { setHistory([]); }
-  }, []);
+  // Scoped to the signed-in user — see utils/recentDatasets.js
+  const history = getRecentDatasets(user?.id).slice(0, 5);
 
   const handleNavigate = (path) => {
     navigate(path);

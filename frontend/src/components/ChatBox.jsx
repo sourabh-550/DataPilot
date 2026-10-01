@@ -132,7 +132,7 @@ export default function ChatBox({ sessionId, sendRef }) {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      content: "Hi! I'm **DataPilot**, your AI data analyst. Ask me anything about your dataset — trends, comparisons, visualizations, or summaries. I'll convert your questions to SQL and explain the results.",
+      content: "Hi! I'm **DataPilot**, your AI data analyst. Ask me anything about your dataset — trends, comparisons, visualizations, or summaries. I'll analyze your data with pandas and explain the results.",
       chart: null,
     },
   ]);

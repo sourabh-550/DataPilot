@@ -145,9 +145,9 @@ function AIIllustration() {
 
       {/* Floating mini cards */}
       {[
-        { top: "10%", left: "0%", label: "98.4%", sub: "Accuracy", color: "#6366F1" },
-        { top: "65%", left: "80%", label: "2.3s", sub: "Query", color: "#22C55E" },
-        { top: "80%", left: "5%", label: "1M+", sub: "Rows", color: "#06B6D4" },
+        { top: "10%", left: "0%", label: "5", sub: "Chart types", color: "#6366F1" },
+        { top: "65%", left: "80%", label: "NL → SQL", sub: "SQL mode", color: "#22C55E" },
+        { top: "80%", left: "5%", label: "10 MB", sub: "Max upload", color: "#06B6D4" },
       ].map((card, i) => (
         <motion.div
           key={i}

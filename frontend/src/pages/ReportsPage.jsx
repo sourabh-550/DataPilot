@@ -15,6 +15,7 @@ import {
   ArrowRight,
   FileDown,
   FileSpreadsheet,
+  Info,
 } from "lucide-react";
 
 const MOCK_REPORTS = [
@@ -89,8 +90,18 @@ const STATS = [
 
 export default function ReportsPage() {
   return (
-    <DashboardLayout title="Reports" subtitle="AI-generated analysis reports from your data">
+    <DashboardLayout title="Reports" subtitle="Preview — sample reports, feature coming soon">
       <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-8">
+
+        {/* Demo data notice — everything on this page is sample content */}
+        <div className="flex items-start gap-3 px-4 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-sm">
+          <Info className="w-4 h-4 mt-0.5 shrink-0" />
+          <p>
+            <span className="font-semibold">Demo data.</span>{" "}
+            Report generation isn't built yet — the reports and numbers below are examples,
+            not generated from your datasets.
+          </p>
+        </div>
 
         {/* Header */}
         <motion.div

@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import { uploadFile } from "../services/api";
 import { useToast } from "../context/ToastContext";
-import { useLocalStorage } from "../hooks/useLocalStorage";
+import { useAuth } from "../context/AuthContext";
+import { addRecentDataset } from "../utils/recentDatasets";
 import {
   Upload,
   FileSpreadsheet,
@@ -294,18 +295,14 @@ export default function UploadPage() {
   const [progress, setProgress] = useState(0);
   const navigate = useNavigate();
   const { addToast } = useToast();
-  const [, setHistory] = useLocalStorage("datapilot-datasets", []);
+  const { user } = useAuth();
 
   const handleUpload = async (file) => {
     setLoading(true);
     setProgress(0);
     try {
       const data = await uploadFile(file, (pct) => setProgress(pct));
-      const entry = { ...data, uploadedAt: new Date().toISOString() };
-      setHistory((prev) => {
-        const filtered = prev.filter((h) => h.session_id !== data.session_id);
-        return [entry, ...filtered].slice(0, 20);
-      });
+      addRecentDataset(user?.id, { ...data, uploadedAt: new Date().toISOString() });
       addToast("Dataset uploaded successfully!", "success");
       setProgress(100);
       setTimeout(() => navigate("/chat", { state: { sessionData: data } }), 800);

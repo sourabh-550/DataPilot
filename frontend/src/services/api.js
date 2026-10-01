@@ -92,6 +92,13 @@ export const deleteSession = async (sessionId) => {
   return response.data;
 };
 
+// ── Dashboard API ─────────────────────────────────────────────
+
+export const getDashboard = async () => {
+  const response = await api.get("/dashboard");
+  return response.data;
+};
+
 // ── Profile APIs ──────────────────────────────────────────────
 
 export const getProfile = async () => {

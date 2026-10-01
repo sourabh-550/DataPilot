@@ -61,8 +61,11 @@ async def chat(
         answer = parts[0].strip() if parts[0].strip() else "Here is your chart:"
         chart_json = parts[1].strip()
 
-    # Save assistant response to DB
-    await save_message(db, request.session_id, "assistant", answer)
+    # Save assistant response to DB — tag chart replies so the dashboard can count them
+    await save_message(
+        db, request.session_id, "assistant", answer,
+        tool_used="chart" if chart_json else None,
+    )
 
     return {
         "answer": answer,
