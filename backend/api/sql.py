@@ -153,23 +153,31 @@ async def sql_chat(
 
         result_str = sql_tool.func(request.message)
         result = json.loads(result_str)
+        # Queries the database rejected before a working one was found —
+        # the UI shows them as "attempt 1 failed → fixed".
+        attempts = result.get("attempts", [])
 
         if "error" in result:
             return {
                 "answer": f"Error: {result['error']}",
                 "sql": result.get("sql", ""),
                 "table": None,
-                "chart": None
+                "chart": None,
+                "attempts": attempts,
             }
 
+        answer = f"Query executed successfully. Found {result.get('row_count', 0)} rows."
+        if attempts:
+            answer += f" Self-corrected after {len(attempts)} failed attempt{'s' if len(attempts) > 1 else ''}."
         return {
-            "answer": f"Query executed successfully. Found {result.get('row_count', 0)} rows.",
+            "answer": answer,
             "sql": result.get("sql", ""),
             "table": {
                 "columns": result.get("columns", []),
                 "rows": result.get("rows", [])
             },
-            "chart": result.get("chart", None)
+            "chart": result.get("chart", None),
+            "attempts": attempts,
         }
 
     except Exception as e:
