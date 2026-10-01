@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { sendMessage } from "../services/api";
+import { sendMessage, getChatHistory } from "../services/api";
 import ChartViewer from "../components/ChartViewer";
 import {
   Send,
@@ -95,6 +95,11 @@ function MessageBubble({ msg, index }) {
                 <ChartViewer chartJson={msg.chart} />
               </div>
             )}
+            {msg.chartNotSaved && (
+              <p className="text-xs text-zinc-500 px-1">
+                Charts from earlier visits aren't saved — ask again to redraw it.
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -145,6 +150,25 @@ export default function ChatBox({ sessionId, sendRef }) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  // Restore this dataset's earlier conversation (saved server-side in chat_history).
+  useEffect(() => {
+    let cancelled = false;
+    getChatHistory(sessionId)
+      .then(({ history }) => {
+        if (cancelled || !history?.length) return;
+        const restored = history.map((m) => ({
+          role: m.role,
+          content: m.message,
+          chart: null,
+          chartNotSaved: m.tool_used === "chart",
+        }));
+        // Keep the greeting first, and anything typed while history was loading last.
+        setMessages((prev) => [prev[0], ...restored, ...prev.slice(1)]);
+      })
+      .catch(() => { /* history is a nice-to-have — chatting still works */ });
+    return () => { cancelled = true; };
+  }, [sessionId]);
 
   // Expose handleSend to parent via sendRef so suggestions can inject messages.
   useEffect(() => {

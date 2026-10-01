@@ -5,7 +5,7 @@ from db.database import get_db
 from db.crud import get_session, save_message, get_chat_history
 from services.file_service import parse_file
 from agent.core import create_agent
-from auth.dependencies import get_current_user_optional
+from auth.dependencies import get_current_user_optional, ensure_session_access
 
 router = APIRouter()
 
@@ -26,16 +26,8 @@ async def chat(
     current_user = Depends(get_current_user_optional),
 ):
 
-    # Validate session exists
     session = await get_session(db, request.session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    # Ownership check — only enforced once a session actually has an owner.
-    # Sessions created without auth (user_id=NULL) stay open to anyone for now.
-    if session.user_id is not None:
-        if current_user is None or current_user.id != session.user_id:
-            raise HTTPException(status_code=403, detail="You don't have access to this session")
+    ensure_session_access(session, current_user)
 
     # Load the dataframe from file
     try:
@@ -77,7 +69,13 @@ async def chat(
 
 
 @router.get("/chat/history/{session_id}")
-async def get_history(session_id: str, db: AsyncSession = Depends(get_db)):
+async def get_history(
+    session_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user_optional),
+):
+    # Same ownership rule as sending a message — chat logs are private.
+    ensure_session_access(await get_session(db, session_id), current_user)
     history = await get_chat_history(db, session_id)
     return {
         "history": [

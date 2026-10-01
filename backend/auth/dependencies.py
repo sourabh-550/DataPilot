@@ -46,6 +46,18 @@ async def _user_from_payload(payload: dict, db: AsyncSession):
     return await get_or_create_user(db, email=email, name=name, user_id=user_id)
 
 
+def ensure_session_access(session, current_user):
+    """
+    Raises 404 if the dataset session doesn't exist, 403 if it belongs to someone else.
+    Sessions created without auth (user_id NULL) stay open to anyone for now.
+    """
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id is not None:
+        if current_user is None or current_user.id != session.user_id:
+            raise HTTPException(status_code=403, detail="You don't have access to this session")
+
+
 async def get_current_user(
     authorization: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db),

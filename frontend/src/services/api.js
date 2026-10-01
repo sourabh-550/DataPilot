@@ -53,6 +53,12 @@ export const sendMessage = async (sessionId, message) => {
   return response.data;
 };
 
+// Re-opens a dataset session (same shape as the upload response, minus insights).
+export const getSession = async (sessionId) => {
+  const response = await api.get(`/sessions/${sessionId}`);
+  return response.data;
+};
+
 export const getChatHistory = async (sessionId) => {
   const response = await api.get(`/chat/history/${sessionId}`);
   return response.data;

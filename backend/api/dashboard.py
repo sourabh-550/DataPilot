@@ -1,20 +1,16 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from datetime import datetime, timezone
+from datetime import datetime
 from db.database import get_db
 from db.models import Session, ChatHistory
 from auth.dependencies import get_current_user_optional
+from services.time_utils import to_utc_iso
 
 router = APIRouter()
 
 RECENT_ACTIVITY_LIMIT = 6
 QUESTION_PREVIEW_CHARS = 80
-
-
-def _iso_utc(dt):
-    # created_at is stored as naive UTC — tag it so browsers don't parse it as local time.
-    return dt.replace(tzinfo=timezone.utc).isoformat() if dt else None
 
 
 @router.get("/dashboard")
@@ -72,7 +68,7 @@ async def get_dashboard(
     activity.sort(key=lambda a: a["created_at"] or datetime.min, reverse=True)
     activity = activity[:RECENT_ACTIVITY_LIMIT]
     for a in activity:
-        a["created_at"] = _iso_utc(a["created_at"])
+        a["created_at"] = to_utc_iso(a["created_at"])
 
     return {
         "stats": {

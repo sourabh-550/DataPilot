@@ -1,10 +1,12 @@
-import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import ChatBox from "../components/ChatBox";
 import InsightCard from "../components/InsightCard";
 import ColumnList from "../components/ColumnList";
+import { SessionLoading, SessionError } from "../components/SessionStatus";
+import { useSessionData, sessionPath } from "../hooks/useSessionData";
 import {
   Table2,
   Database,
@@ -140,15 +142,15 @@ function DataPreviewTable({ summary }) {
 }
 
 export default function DataExplorerPage() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const sessionData = location.state?.sessionData;
+  const { sessionData, loading, error } = useSessionData();
 
-  useEffect(() => {
-    if (!sessionData) navigate("/upload");
-  }, [sessionData, navigate]);
-
-  if (!sessionData) return null;
+  if (error) {
+    return <DashboardLayout title="Data Explorer"><SessionError message={error} /></DashboardLayout>;
+  }
+  if (loading || !sessionData) {
+    return <DashboardLayout title="Data Explorer"><SessionLoading /></DashboardLayout>;
+  }
 
   const { session_id, file_name, summary } = sessionData;
 
@@ -248,7 +250,7 @@ export default function DataExplorerPage() {
             <strong className="text-indigo-400">{summary.row_count?.toLocaleString()} rows</strong> and{" "}
             <strong className="text-indigo-400">{summary.col_count} columns</strong>.
             The data appears to be structured and ready for AI-powered analysis. Use the{" "}
-            <button onClick={() => navigate("/chat", { state: { sessionData } })} className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 transition-colors">
+            <button onClick={() => navigate(sessionPath("/chat", session_id), { state: { sessionData } })} className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2 transition-colors">
               AI Chat
             </button>{" "}
             to ask questions in plain English.

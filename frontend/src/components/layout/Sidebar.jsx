@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { getRecentDatasets } from "../../utils/recentDatasets";
+import { sessionPath } from "../../hooks/useSessionData";
 import {
   LayoutDashboard,
   Upload,
@@ -35,7 +36,10 @@ const BOTTOM_NAV = [
   { label: "Settings", icon: Settings, path: "/settings" },
 ];
 
-export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }) {
+// Pages that work on one dataset — the sidebar links keep the dataset that's open.
+const DATASET_PAGES = ["/chat", "/explorer"];
+
+export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse, currentSessionId }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -43,7 +47,8 @@ export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }
   const history = getRecentDatasets(user?.id).slice(0, 5);
 
   const handleNavigate = (path) => {
-    navigate(path);
+    const keepDataset = currentSessionId && DATASET_PAGES.includes(path);
+    navigate(keepDataset ? sessionPath(path, currentSessionId) : path);
     onClose?.();
   };
 
@@ -162,7 +167,7 @@ export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }
               <motion.button
                 key={item.session_id}
                 onClick={() => {
-                  navigate("/chat", { state: { sessionData: item } });
+                  navigate(sessionPath("/chat", item.session_id), { state: { sessionData: item } });
                   onClose?.();
                 }}
                 className="nav-item w-full"

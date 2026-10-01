@@ -6,6 +6,7 @@ import { uploadFile } from "../services/api";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
 import { addRecentDataset } from "../utils/recentDatasets";
+import { sessionPath } from "../hooks/useSessionData";
 import {
   Upload,
   FileSpreadsheet,
@@ -305,7 +306,7 @@ export default function UploadPage() {
       addRecentDataset(user?.id, { ...data, uploadedAt: new Date().toISOString() });
       addToast("Dataset uploaded successfully!", "success");
       setProgress(100);
-      setTimeout(() => navigate("/chat", { state: { sessionData: data } }), 800);
+      setTimeout(() => navigate(sessionPath("/chat", data.session_id), { state: { sessionData: data } }), 800);
       return true;
     } catch {
       addToast("Upload failed. Please try again.", "error");

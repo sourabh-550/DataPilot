@@ -1,10 +1,12 @@
-import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import ChatBox from "../components/ChatBox";
 import InsightCard from "../components/InsightCard";
 import ColumnList from "../components/ColumnList";
+import { SessionLoading, SessionError } from "../components/SessionStatus";
+import { useSessionData } from "../hooks/useSessionData";
 import {
   MessageSquare,
   FileSpreadsheet,
@@ -63,9 +65,8 @@ function DatasetCard({ summary, fileName }) {
 }
 
 export default function ChatPage() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const sessionData = location.state?.sessionData;
+  const { sessionData, loading, error } = useSessionData();
   const [columnSearch, setColumnSearch] = useState("");
   const [mobileInfoOpen, setMobileInfoOpen] = useState(false);
   // Ref to the ChatBox's sendMessage function — lets parent inject suggestions.
@@ -75,11 +76,12 @@ export default function ChatPage() {
     chatboxSendRef.current?.(text);
   };
 
-  useEffect(() => {
-    if (!sessionData) navigate("/upload");
-  }, [sessionData, navigate]);
-
-  if (!sessionData) return null;
+  if (error) {
+    return <DashboardLayout title="AI Chat"><SessionError message={error} /></DashboardLayout>;
+  }
+  if (loading || !sessionData) {
+    return <DashboardLayout title="AI Chat"><SessionLoading /></DashboardLayout>;
+  }
 
   const { session_id, file_name, summary, insights } = sessionData;
 
@@ -177,7 +179,8 @@ export default function ChatPage() {
 
           {/* ChatBox */}
           <div className="flex-1 min-h-0">
-            <ChatBox sessionId={session_id} sendRef={chatboxSendRef} />
+            {/* key: a different dataset gets a fresh ChatBox, not the previous conversation */}
+            <ChatBox key={session_id} sessionId={session_id} sendRef={chatboxSendRef} />
           </div>
         </div>
 

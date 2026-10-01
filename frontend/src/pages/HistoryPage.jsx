@@ -4,6 +4,7 @@ import DashboardLayout from "../components/layout/DashboardLayout";
 import { getHistory, deleteSession } from "../services/api";
 import { timeAgo } from "../utils/formatters";
 import { useToast } from "../context/ToastContext";
+import { sessionPath } from "../hooks/useSessionData";
 import {
   History, Database, MessageSquare, Clock,
   Rows, Columns, ChevronRight, Upload,
@@ -157,7 +158,7 @@ export default function HistoryPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + i * 0.06 }}
                 className="card rounded-2xl p-5 group hover:border-zinc-700 transition-all duration-300 cursor-pointer"
-                onClick={() => navigate("/chat", { state: { sessionData: item } })}
+                onClick={() => navigate(sessionPath("/chat", item.session_id), { state: { sessionData: item } })}
                 whileHover={{ y: -2 }}
               >
                 <div className="flex items-center gap-4">
@@ -191,7 +192,7 @@ export default function HistoryPage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate("/chat", { state: { sessionData: item } });
+                          navigate(sessionPath("/chat", item.session_id), { state: { sessionData: item } });
                         }}
                         className="btn-ghost gap-1.5 text-xs rounded-xl border border-zinc-800 px-3 py-2"
                       >
