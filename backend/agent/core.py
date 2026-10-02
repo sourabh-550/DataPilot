@@ -9,6 +9,9 @@ import re
 
 _COULD_NOT_ANSWER = "Sorry, I couldn't work out how to answer that. Try rephrasing your question."
 
+# Decided from the user's words, not left to the LLM: "average order value by region".
+_ASKS_FOR_AVERAGE = re.compile(r"\b(average|avg|mean)\b", re.IGNORECASE)
+
 
 def _answer_text(raw: str) -> str:
     """Pull the sentence out of the explainer's {"answer": ...} JSON reply."""
@@ -60,7 +63,8 @@ Rules:
 - Never add currency symbols ($, ₹, €, £) or currency names unless a column name or the data itself shows that currency
 - For chart params format: chart_type|x_column|y_column|title
 - chart_type must be exactly one of: bar, line, scatter, pie, histogram
-- For histogram and pie, leave y_column empty, e.g. "histogram|price||Price Distribution"
+- For bar, line and pie, x_column is the category and y_column the numeric value to total per category (the chart tool aggregates repeated categories itself), e.g. "bar|region|total_amount|Sales by Region"
+- For histogram, leave y_column empty, e.g. "histogram|price||Price Distribution". For a pie of how many rows fall in each category, also leave y_column empty
 - For code params: valid pandas code, store output in 'result' variable
 - Additive measures (sales, revenue, amount, quantity, units, orders, profit): for "top/most/best/maximum/highest/lowest X" questions, FIRST aggregate per X with groupby + sum, THEN rank. Example: totals = df.groupby('product')['quantity'].sum(); result = {{"product": totals.idxmax(), "measure": "total quantity", "value": totals.max()}}
 - Never report one row's value as a total. Pick a single row only when the question asks about one order/row/record, or compares a per-item attribute — and include its label: result = df.loc[df['total_sales'].idxmax(), ['product', 'total_sales']].to_dict()
@@ -83,7 +87,9 @@ Rules:
             params = decision.get("params")
 
             if action == "chart":
-                result = self.chart_gen.func(params)
+                # Repeated categories are summed, unless the question asks for an average.
+                agg = "mean" if _ASKS_FOR_AVERAGE.search(question) else "sum"
+                result = self.chart_gen.func(params, agg=agg)
                 if "CHART_JSON:" in result:
                     return {"output": f"CHART_JSON:{result.split('CHART_JSON:')[1]}"}
                 return {"output": result}
