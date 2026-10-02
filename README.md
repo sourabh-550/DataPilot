@@ -1,406 +1,183 @@
-<div align="center">
+# DataPilot
 
-# 🧭 DataPilot
+Ask questions about a CSV, Excel or SQLite file in plain English, and get answers, tables and charts computed from the real data.
 
-### AI-Powered Data Analytics Platform
+**Live demo: [datapilot-one.vercel.app](https://datapilot-one.vercel.app)** · Try as guest — no sign-up
 
-[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org)
-[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://supabase.com)
-[![LangChain](https://img.shields.io/badge/LangChain-Agent-1C3C3C?style=for-the-badge&logo=chainlink&logoColor=white)](https://langchain.com)
-[![Groq](https://img.shields.io/badge/Groq-Llama_3-F55036?style=for-the-badge&logo=meta&logoColor=white)](https://groq.com)
-[![Vercel](https://img.shields.io/badge/Frontend-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://vercel.com)
-[![Render](https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render&logoColor=black)](https://render.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
+![DataPilot dashboard](docs/screenshots/dashboard.png)
 
-**Upload a CSV. Ask a question. Get instant AI insights.**
-
-[🚀 Live Demo](#live-demo) · [📖 Docs](#setup--installation) · [🗺️ Roadmap](#roadmap)
-
-[ADD HERO SCREENSHOT OR GIF HERE]
-
-</div>
+The LLM never answers a numeric question from memory. It writes pandas or SQL, the backend runs that code on your data, and the numbers you see come from the result.
 
 ---
 
-## 📋 Table of Contents
+## Screenshots
 
-- [Overview](#overview)
-- [Live Demo](#live-demo)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
-- [Key Engineering Challenges & Solutions](#key-engineering-challenges--solutions)
-- [Setup & Installation](#setup--installation)
-  - [Prerequisites](#prerequisites)
-  - [Backend](#backend-setup)
-  - [Frontend](#frontend-setup)
-  - [Environment Variables](#environment-variables)
-- [Project Structure](#project-structure)
-- [Roadmap](#roadmap)
-- [Tech Decisions & Learnings](#tech-decisions--learnings)
-- [Contact](#contact)
-- [License](#license)
-
----
-
-## Overview
-
-**DataPilot** is a full-stack AI analytics platform that lets anyone — regardless of SQL or data science background — extract meaningful insights from structured data in seconds. Upload a CSV or Excel file, and DataPilot automatically profiles your columns, flags data quality issues, generates business insights using a Llama 3-powered AI agent, and lets you query your data in plain English.
-
-The project is end-to-end: a FastAPI backend with a custom AI agent layer, a PostgreSQL database via Supabase, JWT-secured authentication, cloud file storage, and a React frontend with interactive Plotly dashboards — all deployed and running in production.
-
----
-
-## Live Demo
-
-| Surface | Link |
+| Login | Dashboard |
 |---|---|
-| 🌐 Frontend | [ADD FRONTEND URL] |
-| ⚙️ Backend API (Swagger) | [ADD BACKEND API URL]/docs |
-
-> **Note:** The backend runs on Render's free tier. Cold starts may take ~30 seconds if the service has been idle. A self-ping mechanism (via UptimeRobot) is in place to minimize this.
+| ![Login page with guest sign-in](docs/screenshots/login.png) | ![Dashboard with stats and datasets](docs/screenshots/dashboard.png) |
+| **Chat with a chart** | **SQL workspace** |
+| ![Chat answering with a bar chart](docs/screenshots/chat-chart.png) | ![SQL workspace with generated query and results](docs/screenshots/sql.png) |
 
 ---
 
 ## Features
 
-### ✅ Core Features
-
-| Feature | Description |
-|---|---|
-| 📂 **AI-Powered Data Upload** | Upload CSV or Excel files. Get automatic column profiling, null/duplicate detection, a data quality summary, and 4–5 AI-generated business insights — all in one step. |
-| 💬 **Natural Language → SQL** | Ask data questions in plain English. A custom AI agent generates and executes the SQL query against your dataset and returns structured results. |
-| 📊 **Interactive Dashboards** | Auto-generated Plotly charts tailored to the uploaded dataset. No chart configuration required. |
-| 🗣️ **Chat-Based Data Exploration** | Conversational interface for iterative data analysis. Follow-up questions maintain context across the session. |
-| 🗂️ **Session & History Management** | All past uploads, queries, and results are persisted and retrievable from the user's history panel. |
-| 🔐 **Secure Authentication** | Supabase Auth with JWT verification via JWKS endpoint. Supports both authenticated and guest access flows. |
-
-### 🔜 Upcoming Features
-
-> See [Roadmap](#roadmap) for details.
-
-- Live database connections (MySQL, PostgreSQL, SQL Server)
-- Automated data preprocessing & cleaning pipeline
-- RAG-based document + data querying
+- **Chat with a spreadsheet.** Upload a CSV, `.xlsx` or `.xls` file (up to 10 MB). You get a column summary (types, missing values, samples) and four generated insights. Questions are answered by pandas code that the LLM writes and the backend runs in a sandbox.
+- **Charts.** Five types: bar, line, scatter, pie and histogram. Repeated categories are aggregated before plotting (sum, or mean when you ask for an average), bars are sorted largest first, and charts follow the light/dark theme.
+- **SQL mode.** Upload a SQLite `.db` file and ask questions. The LLM writes SQL for that database's dialect, a guard allows only a single read-only query, and if the database rejects the query, the error goes back to the LLM to fix it (up to 2 corrections). The UI shows the generated SQL, each failed attempt, a results table and a chart.
+- **Guest mode.** "Try as guest" creates a real, private anonymous account through Supabase, so each guest's data is isolated like any other user's. Email/password and Google sign-in are also available.
+- **History.** Reopen a past dataset (the session ID is in the URL, so refresh and bookmarks work) and see earlier messages. Deleting a dataset removes the stored file first, then the database rows.
+- **Dashboard.** Per-user stats (datasets, rows, questions asked, charts generated), your recent datasets and recent activity.
 
 ---
 
-## Tech Stack
+## How it works
 
-### Frontend
-| Technology | Purpose |
-|---|---|
-| React 18 | UI framework |
-| TailwindCSS | Utility-first styling |
-| Plotly.js | Interactive data visualizations |
-| Vite | Build tool & dev server |
-
-### Backend
-| Technology | Purpose |
-|---|---|
-| FastAPI (Python) | REST API framework |
-| SQLAlchemy ORM | Database access layer |
-| PostgreSQL (Supabase) | Primary relational database |
-| Supabase Storage | Cloud file storage for uploads |
-| Supabase Auth | User authentication & JWT issuance |
-
-### AI / Agent Layer
-| Technology | Purpose |
-|---|---|
-| LangChain | Agent orchestration framework |
-| `SimpleDataAgent` (custom) | Lightweight custom agent replacing standard ReAct agent |
-| Groq API | LLM inference (fast, low-latency) |
-| Llama 3.3 70B Versatile | Primary model for complex reasoning |
-| Llama 3.1 8B Instant | Fallback model under rate-limit conditions |
-
-### Infrastructure & Deployment
-| Technology | Purpose |
-|---|---|
-| Render (free tier) | Backend hosting |
-| Vercel | Frontend hosting |
-| UptimeRobot + self-ping | Keep Render service warm |
-| GitHub | Version control |
-
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        CLIENT                               │
-│         React + TailwindCSS + Plotly (Vercel)               │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ HTTPS / REST
-┌──────────────────────────▼──────────────────────────────────┐
-│                     FastAPI BACKEND                         │
-│                      (Render)                               │
-│                                                             │
-│  ┌─────────────┐   ┌─────────────┐   ┌──────────────────┐  │
-│  │  Auth Layer │   │ File Router │   │  Query Router    │  │
-│  │ (JWKS/JWT)  │   │             │   │  (NL → SQL)      │  │
-│  └─────────────┘   └──────┬──────┘   └────────┬─────────┘  │
-│                           │                   │             │
-│                    ┌──────▼──────────────────▼──────┐      │
-│                    │       SimpleDataAgent           │      │
-│                    │  (LangChain + Groq Llama 3)     │      │
-│                    │  Dynamic model switching:        │      │
-│                    │  70B → 8B under rate limits      │      │
-│                    └──────────────┬─────────────────┘      │
-└───────────────────────────────────┼────────────────────────┘
-                                    │
-           ┌────────────────────────┼───────────────────┐
-           │                        │                   │
-  ┌────────▼────────┐    ┌──────────▼──────┐  ┌────────▼──────┐
-  │  PostgreSQL DB  │    │ Supabase Storage │  │ Supabase Auth │
-  │  (Supabase)     │    │ (File uploads)   │  │  (JWT / JWKS) │
-  └─────────────────┘    └─────────────────┘  └───────────────┘
+```mermaid
+flowchart LR
+  U["React app<br/>(Vercel)"] -- "login" --> SA["Supabase Auth"]
+  U -- "HTTPS + JWT" --> B["FastAPI backend<br/>(Render)"]
+  B -- "users, sessions, chat" --> PG[("Supabase Postgres")]
+  B -- "CSV / Excel files" --> ST[("Supabase Storage")]
+  B -- "prompts" --> G["Groq LLM"]
+  B -- "pandas code" --> SB["Sandboxed<br/>child process"]
+  B -- "read-only SQL" --> DB[("Uploaded SQLite file")]
 ```
 
-> [ADD ARCHITECTURE DIAGRAM IMAGE HERE]
+The React frontend signs in with Supabase and sends the JWT with every request; the backend verifies it against Supabase's public keys (JWKS). For a file question, the backend loads the file from Supabase Storage and gives the LLM a description of the columns, not the data. The LLM replies in JSON with one action: `code` (pandas), `chart` (a chart spec) or `answer` (structure-only questions, never numbers). Code runs in an isolated process; the result is rounded and sorted in code, then a second LLM call explains it in a sentence. SQL questions follow the same idea: generate, check, run read-only, and self-correct on database errors.
 
 ---
 
-## Key Engineering Challenges & Solutions
+## Engineering highlights
 
-These are real problems encountered and solved during development — not textbook exercises.
-
-| # | Problem | Solution |
-|---|---|---|
-| **1** | 🗂️ **Ephemeral disk on Render** — Uploaded files were silently deleted on every service restart, causing broken sessions with no clear error. | Migrated all file storage from local disk to **Supabase Storage**. Files are now uploaded directly to cloud storage and referenced by URL, surviving restarts entirely. |
-| **2** | 🤖 **ReAct agent reliability** — The standard LangChain `ReAct` agent frequently failed with smaller/faster LLMs due to output-parsing errors and rate-limit mid-chain interruptions. | Replaced with a custom **`SimpleDataAgent`** — a minimal, deterministic agent with explicit tool dispatch, no complex chain-of-thought parsing, and graceful fallback. More robust, easier to debug. |
-| **3** | ⚡ **Groq API rate limits** — The 70B model regularly hit token-per-minute limits under concurrent use, returning hard errors. | Implemented **dynamic model switching**: the agent defaults to `llama-3.3-70b-versatile` and automatically falls back to `llama-3.1-8b-instant` when a rate-limit error is detected. |
-| **4** | 🔑 **Supabase project sprawl** — Originally used two separate Supabase projects (one for auth, one for DB), causing JWT key mismatches that required hours of debugging. | Consolidated everything into a **single Supabase project**. Lesson internalized: minimize cross-project credential dependencies at the infrastructure planning stage. |
-| **5** | 🐍 **Python version mismatch in production** — `pandas` crashed silently on the Python version Render chose by default, working fine locally. | **Pinned the Python runtime version** explicitly in the Render config (`python-3.11.x`), eliminating the environment mismatch. |
-| **6** | 🔀 **Feature branch risk management** — A complete data preprocessing pipeline was built and tested but introduced instability risks to the live deployment. | Made a deliberate decision to **revert the feature to a clean branch** rather than ship it, preserving the implementation for a controlled future release. Design kept documented. |
+- **Two-layer sandbox for generated code** (`backend/agent/tools/python_exec.py`).
+  1. A static check on the Python AST refuses imports, names starting with `_`, pandas file readers and writers, and any `pd.*` function outside an allow-list of 30. Only 24 safe built-ins exist (`open`, `eval` and `__import__` do not).
+  2. The code then runs in a separate child process that clears its environment variables (no API keys or database URL), installs a Python audit hook (PEP 578) that blocks file writes, reads outside the Python installation, sockets and subprocesses, and is killed after 10 seconds.
+- **SQL guard** (`check_query` in `backend/services/sql_service.py`). It blanks out strings and comments, then allows exactly one statement starting with `SELECT` or `WITH`. It rejects write keywords anywhere (including `INTO`), risky server functions (`pg_read_file`, `load_extension`, `xp_cmdshell`, …) and quoting tricks where databases disagree on where a string ends. In offline tests it blocks 21 of 21 attack queries and accepts 18 of 18 valid ones. Uploaded SQLite files are also opened read-only (`mode=ro&immutable=1`), so a query that got past the guard still couldn't write.
+- **SQL self-correction** (`backend/agent/tools/sql_tool.py`). The database's own error message goes back to the LLM, at most 2 times. Guard rejections are final and never retried, since a retry would answer a different question.
+- **Known-answer eval** (`backend/evals/agent_known_answers.py`). 13 questions with answers computed by pandas, on test data built with traps: the product with the most units, the most revenue and the largest single order are three different products, so each wrong method gives a different wrong answer.
+- **Model as configuration.** The Groq model is set by the `GROQ_MODEL` environment variable (default `openai/gpt-oss-20b`), and every LLM call goes through one wrapper (`backend/services/llm.py`) with JSON mode, retries and clean user-facing errors. When Groq retires a model, the fix is a config change, not a code change.
+- **Health check with a real database query.** `GET`/`HEAD /health` runs `SELECT 1` on Postgres with a 5-second timeout and returns 200, or 503 if the database is unreachable.
 
 ---
 
-## Setup & Installation
+## Tech stack
 
-### Prerequisites
-
-- Python 3.11+
-- Node.js 18+
-- A [Supabase](https://supabase.com) project (single project for auth + DB + storage)
-- A [Groq API](https://console.groq.com) key
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, Vite, React Router, Tailwind CSS, Plotly.js, Supabase JS |
+| Backend | Python 3.11, FastAPI, SQLAlchemy (async + asyncpg), pandas, Plotly |
+| LLM | Groq (`openai/gpt-oss-20b` by default), called through `langchain-groq` |
+| Data and auth | Supabase Postgres, Supabase Auth (JWT, anonymous sign-in), Supabase Storage |
+| Hosting | Vercel (frontend), Render (backend), UptimeRobot (monitoring) |
 
 ---
 
-### Backend Setup
+## Run locally
+
+Requirements: Python 3.11, Node.js, a Supabase project and a Groq API key.
+
+**Backend**
 
 ```bash
-# Clone the repository
-git clone https://github.com/[YOUR_GITHUB_USERNAME]/DataPilot.git
-cd DataPilot/backend
-
-# Create and activate a virtual environment
+cd backend
 python -m venv venv
-source venv/bin/activate        # macOS/Linux
-venv\Scripts\activate           # Windows
-
-# Install dependencies
+source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-
-# Copy and configure environment variables
-cp .env.example .env
-# Edit .env with your credentials (see Environment Variables section)
-
-# Start the development server
+cp .env.example .env            # then fill in the values
 uvicorn main:app --reload --port 8000
 ```
 
-The API will be available at `http://localhost:8000` and Swagger docs at `http://localhost:8000/docs`.
+| Variable | Purpose |
+|---|---|
+| `GROQ_API_KEY` | Groq API key (secret). |
+| `GROQ_MODEL` | Groq model ID. Default `openai/gpt-oss-20b`. |
+| `GROQ_REASONING_EFFORT` | `low` by default. Set it empty for a non-reasoning model. |
+| `DATABASE_URL` | Postgres connection string (secret). If unset, a local SQLite file is used. |
+| `SUPABASE_URL` | Supabase project URL. Used for JWT verification (JWKS) and Storage. |
+| `SUPABASE_SERVICE_KEY` | Supabase service-role key for Storage (secret, server only). |
+| `SUPABASE_BUCKET` | Storage bucket name. Default `datapilot-uploads`. |
 
----
+API docs are at `http://localhost:8000/docs`.
 
-### Frontend Setup
+**Frontend**
 
 ```bash
-cd DataPilot/frontend
-
-# Install dependencies
+cd frontend
 npm install
-
-# Copy and configure environment variables
-cp .env.example .env.local
-# Edit .env.local with your Supabase and backend URL
-
-# Start the development server
-npm run dev
+cp .env.example .env            # then fill in the values
+npm run dev                     # http://localhost:5173
 ```
 
-The frontend will be available at `http://localhost:5173`.
-
----
-
-### Environment Variables
-
-#### Backend (`.env`)
-
-```env
-# Supabase
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-SUPABASE_JWT_SECRET=your_supabase_jwt_secret
-
-# Database
-DATABASE_URL=postgresql://postgres:[password]@[host]:5432/postgres
-
-# AI / LLM
-GROQ_API_KEY=your_groq_api_key
-
-# App Config
-ENVIRONMENT=development
-ALLOWED_ORIGINS=http://localhost:5173
-```
-
-#### Frontend (`.env.local`)
-
-```env
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_API_BASE_URL=http://localhost:8000
-```
-
-> ⚠️ Never commit `.env` files. All secrets should be injected via environment variables in your deployment platform (Render / Vercel dashboard).
-
----
-
-## Project Structure
-
-```
-DataPilot/
-├── backend/
-│   ├── main.py                  # FastAPI app entrypoint
-│   ├── requirements.txt
-│   ├── .env.example
-│   ├── routers/
-│   │   ├── auth.py              # Auth endpoints (JWT verification)
-│   │   ├── upload.py            # File upload & Supabase Storage integration
-│   │   ├── query.py             # Natural language → SQL endpoint
-│   │   └── history.py           # Session & query history
-│   ├── agents/
-│   │   └── simple_data_agent.py # Custom LangChain agent with dynamic model switching
-│   ├── models/
-│   │   └── schemas.py           # SQLAlchemy models + Pydantic schemas
-│   ├── services/
-│   │   ├── file_service.py      # File parsing (CSV/Excel) + profiling
-│   │   ├── insight_service.py   # AI insight generation
-│   │   └── supabase_client.py   # Supabase SDK wrapper
-│   └── utils/
-│       └── auth_utils.py        # JWKS-based JWT verification helpers
-│
-├── frontend/
-│   ├── index.html
-│   ├── vite.config.js
-│   ├── package.json
-│   ├── .env.example
-│   └── src/
-│       ├── main.jsx
-│       ├── App.jsx
-│       ├── components/
-│       │   ├── Dashboard/       # Chart + visualization components
-│       │   ├── Chat/            # Conversational query interface
-│       │   ├── Upload/          # File upload flow
-│       │   └── Auth/            # Login / signup / guest flow
-│       ├── pages/
-│       │   ├── Home.jsx
-│       │   ├── Analyze.jsx
-│       │   └── History.jsx
-│       ├── hooks/               # Custom React hooks
-│       ├── services/            # API client functions
-│       └── store/               # Global state (context / zustand)
-│
-└── README.md
-```
-
----
-
-## Roadmap
-
-| Status | Feature |
+| Variable | Purpose |
 |---|---|
-| ✅ Done | CSV / Excel upload with AI profiling and insight generation |
-| ✅ Done | Natural language → SQL querying via custom agent |
-| ✅ Done | Interactive Plotly dashboards |
-| ✅ Done | Chat-based data exploration |
-| ✅ Done | Session and query history persistence |
-| ✅ Done | Supabase JWT authentication + guest mode |
-| ✅ Done | Supabase Storage for reliable file persistence |
-| ✅ Done | Dynamic LLM model switching (70B ↔ 8B) |
-| 🔜 Planned | **Live database connections** — connect MySQL, PostgreSQL, or SQL Server directly |
-| 🔜 Planned | **Automated data preprocessing pipeline** — null imputation, outlier detection, type coercion |
-| 🔜 Planned | **RAG-based tooling** — query across documents and structured data simultaneously |
-| 🔜 Planned | **Shareable dashboards** — generate public links to analysis results |
-| 🔜 Planned | **Scheduled reports** — run queries on a schedule and email results |
+| `VITE_SUPABASE_URL` | Supabase project URL. |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon (public) key. |
+| `VITE_API_URL` | Backend URL, ending in `/api`, e.g. `http://localhost:8000/api`. |
+
+Set `VITE_API_URL` explicitly: if it is missing, the frontend falls back to the deployed backend, and every question you ask uses the live Groq quota.
 
 ---
 
-## Tech Decisions & Learnings
+## Deploy
 
-This section documents deliberate design choices and honest post-mortems — questions that often come up in technical interviews.
-
-<details>
-<summary><strong>Why a custom agent instead of LangChain's built-in ReAct agent?</strong></summary>
-
-The standard `ReAct` agent expects a very specific output format from the LLM at each reasoning step. With smaller or faster models — necessary here for staying within Groq rate-limit headroom — that format was frequently violated, causing mid-chain crashes. Rather than wrapping the agent in increasingly complex retry and repair logic, a purpose-built `SimpleDataAgent` with explicit tool dispatch was implemented. It handles exactly the tools DataPilot needs, with no excess overhead. This also made the agent significantly easier to test and debug.
-
-</details>
-
-<details>
-<summary><strong>Why Supabase over a standalone PostgreSQL + S3 setup?</strong></summary>
-
-For a solo project targeting rapid production deployment, Supabase provides auth, storage, and Postgres in one dashboard with a generous free tier. The one lesson learned: don't split auth and database across two separate Supabase projects. The JWT keys are project-scoped, and using two projects introduced key-mismatch bugs that were painful to diagnose. Keep everything in one project from the start.
-
-</details>
-
-<details>
-<summary><strong>Why Render for the backend?</strong></summary>
-
-Render's free tier was sufficient for a portfolio deployment. The major caveat — **ephemeral disk** — was a real production bug: files saved to disk disappeared on every restart. Migrating to Supabase Storage resolved this completely. If this were a production SaaS product, a persistent-disk plan or dedicated object storage would be the correct choice from day one.
-
-</details>
-
-<details>
-<summary><strong>What would you do differently?</strong></summary>
-
-- **Start with a single Supabase project.** The cost of consolidating two projects mid-development was high.
-- **Design the storage layer first.** The ephemeral disk bug could have been anticipated; cloud storage should have been the default from the first commit.
-- **Pin runtime versions immediately.** The Python version mismatch on Render is a known gotcha. Add a `runtime.txt` or equivalent at project initialization, not after a production bug.
-- **Scope the MVP tighter.** The data preprocessing pipeline was built to near-completion before being reverted. Future approach: ship a minimal working slice first, then expand with feature flags.
-
-</details>
+- **Supabase** (one project for database, auth and storage)
+  - Copy the Postgres connection string into `DATABASE_URL`. The backend creates its tables on startup.
+  - Create a Storage bucket named after `SUPABASE_BUCKET` (default `datapilot-uploads`).
+  - Authentication → Sign In / Providers: turn on **Allow anonymous sign-ins** (needed for guest mode). Enable Google if you want Google sign-in.
+  - Guest users have no email. If your `users` table was created before guest mode existed, make the column nullable once in the SQL editor:
+    ```sql
+    ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
+    ```
+- **Render** (backend): root directory `backend`, build `pip install -r requirements.txt`, start command from `backend/Procfile` (`uvicorn main:app --host 0.0.0.0 --port $PORT`). Add the backend variables above in the dashboard. Changing `GROQ_MODEL` there restarts the service with no code change.
+- **Vercel** (frontend): root directory `frontend`, framework Vite. Add the three `VITE_*` variables. `frontend/vercel.json` rewrites all paths to `index.html` so client-side routes work on refresh.
+- **UptimeRobot**: an HTTP(s) monitor on `https://<your-backend>/health` every 5 minutes. Because `/health` runs a real database query, the same ping keeps Render's free instance awake, keeps the Supabase project active, and alerts on outages.
+- **Forks:** the CORS allow-list and the backend URL used by the keep-alive ping are hard-coded in `backend/main.py`; update them for your own domains.
 
 ---
 
-## Contact
+## Testing
 
-| | |
-|---|---|
-| 👤 **GitHub** | [ADD GITHUB PROFILE LINK] |
-| 💼 **LinkedIn** | [ADD LINKEDIN PROFILE LINK] |
-| 📧 **Email** | [ADD EMAIL] |
+Tests run offline by default. Groq's free tier is a daily token quota shared with the live site, so tests replace `ask_llm` (`backend/services/llm.py`) with a scripted fake that returns pre-written replies, and use a local SQLite database. This keeps them free and deterministic, and covers agent routing, chart specs, SQL self-correction and the SQL guard.
 
----
+```python
+import json
+import agent.core as core
 
-## License
-
-This project is licensed under the [MIT License](LICENSE).
-
-```
-MIT License — free to use, modify, and distribute with attribution.
+replies = [
+    {"action": "code", "params": "result = df.groupby('region')['total_amount'].sum()"},
+    {"answer": "North is highest at 271,352.05."},
+]
+core.ask_llm = lambda llm, messages: json.dumps(replies.pop(0))
+agent = core.create_agent(df, "test")
+print(agent.invoke({"input": "Total sales by region?"})["output"])
 ```
 
+On Windows the sandbox starts a fresh Python process, so put test scripts under `if __name__ == "__main__":`.
+
+**Known-answer eval.** This one makes real Groq calls.
+
+```bash
+cd backend
+python -m evals.agent_known_answers   # exits 1 if any case fails
+```
+
+> **Warning:** one run uses about 55k tokens, roughly a quarter of Groq's free daily quota, and that quota is shared with anything else using the same key (including a deployed site). Run it only after prompt or model changes.
+
+Frontend: `npm run lint` and `npm run build` in `frontend/`.
+
 ---
 
-<div align="center">
+## Known limitations
 
-Built with care, deployed with lessons learned.
+- **Live database connections don't work on the deployed site.** The SQL page has a MySQL / PostgreSQL / SQL Server connection form, but the drivers aren't installed on Render. Uploading a SQLite `.db` file is the supported path.
+- **No conversation memory.** Each question is answered on its own; earlier messages are shown but not sent to the model, so follow-ups like "and for the North?" lack context.
+- **Insights aren't stored.** They're generated once at upload, so a dataset reopened from History shows none. Charts aren't stored either; old chart replies ask you to ask again.
+- Uploaded `.db` files and SQL sessions live on the backend's local disk and in memory, so they're lost when Render restarts.
+- There is no per-user rate limit. If the shared Groq quota runs out, the app says the AI service is busy until it resets.
 
-⭐ If you found this project interesting, consider giving it a star!
+---
 
-</div>
+## Author
+
+Sourabh Saxena · [GitHub](https://github.com/sourabh-550) · [LinkedIn](https://www.linkedin.com/in/sourabh55)
