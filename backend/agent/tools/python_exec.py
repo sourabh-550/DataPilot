@@ -2,6 +2,7 @@ import ast
 import builtins
 import gc
 import multiprocessing as mp
+import numbers
 import os
 import re
 import sys
@@ -141,6 +142,61 @@ def _check_code(code: str):
     return None
 
 
+def _is_number(x) -> bool:
+    return isinstance(x, numbers.Number) and not isinstance(x, bool)
+
+
+# Calendar labels pandas won't parse on their own: "February", "Mar 2025", "Mon", "Q3", "2025 Q1".
+# Whole words only, so a category like "Mayonnaise" isn't mistaken for "May".
+_CALENDAR_LABEL = re.compile(
+    r"^(?:(?:january|february|march|april|may|june|july|august|september|october|november|december"
+    r"|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\.?(?:\s+\d{2,4})?"
+    r"|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun"
+    r"|q[1-4](?:\s*\d{2,4})?|\d{4}\s*-?\s*q[1-4])$",
+    re.IGNORECASE,
+)
+
+
+def _is_ordered_axis(labels) -> bool:
+    """True for labels with a natural order — years, IDs, dates, months, weekdays,
+    quarters — which must keep that order (sorting a trend by value would scramble it)."""
+    labels = list(labels)
+    if not labels or all(_is_number(l) for l in labels):
+        return True
+    if any(isinstance(l, (pd.Timestamp, pd.Period)) or hasattr(l, "isoformat") for l in labels):
+        return True
+    text = [str(l).strip() for l in labels]
+    if sum(bool(_CALENDAR_LABEL.match(t)) for t in text) / len(text) > 0.8:
+        return True
+    parsed = pd.to_datetime(pd.Series(text), errors="coerce", format="mixed")
+    return parsed.notna().mean() > 0.8
+
+
+def _order_by_value(value):
+    """
+    A value per category (e.g. average order value per region) reads largest
+    first, so the explanation can name the top one. Time-ordered results and
+    mixed records like {"product": "Mouse", "price": 25} are left as they are.
+    """
+    if isinstance(value, pd.Series):
+        if (len(value) > 1 and not isinstance(value.index, pd.MultiIndex)
+                and pd.api.types.is_numeric_dtype(value) and not _is_ordered_axis(value.index)):
+            return value.sort_values(ascending=False)
+        return value
+    if isinstance(value, pd.DataFrame):
+        numeric = value.select_dtypes("number").columns
+        others = [c for c in value.columns if c not in numeric]
+        if len(value) > 1 and len(numeric) == 1 and len(others) <= 1:
+            labels = value[others[0]] if others else value.index
+            if not _is_ordered_axis(labels):
+                return value.sort_values(numeric[0], ascending=False)
+        return value
+    if isinstance(value, dict) and len(value) > 1 and all(_is_number(v) for v in value.values()):
+        if not _is_ordered_axis(value.keys()):
+            return dict(sorted(value.items(), key=lambda kv: kv[1], reverse=True))
+    return value
+
+
 def _round_floats(value):
     """Round floats to 2 places so answers say 676.67, not 676.6666666666666."""
     if isinstance(value, (pd.DataFrame, pd.Series)):
@@ -197,7 +253,7 @@ def _run_in_child(code: str, df: pd.DataFrame, conn):
         exec(code, namespace)  # noqa: S102
         # str() runs while still guarded — result objects can have custom __str__.
         if "result" in namespace:
-            output = str(_round_floats(namespace["result"]))[:_MAX_OUTPUT_CHARS]
+            output = str(_round_floats(_order_by_value(namespace["result"])))[:_MAX_OUTPUT_CHARS]
         else:
             output = _NO_RESULT_MESSAGE
     except Exception as e:

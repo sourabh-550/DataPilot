@@ -1,4 +1,4 @@
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from agent.tools.python_exec import create_python_exec_tool
 from agent.tools.data_info import create_data_info_tool
 from agent.tools.chart_gen import create_chart_gen_tool
@@ -11,6 +11,35 @@ _COULD_NOT_ANSWER = "Sorry, I couldn't work out how to answer that. Try rephrasi
 
 # Decided from the user's words, not left to the LLM: "average order value by region".
 _ASKS_FOR_AVERAGE = re.compile(r"\b(average|avg|mean)\b", re.IGNORECASE)
+
+# The user explicitly asked for a visual ("bar chart", "plot", "visualize", ...).
+_ASKS_FOR_CHART = re.compile(
+    r"\b(charts?|graphs?|plots?|plotted|visuali[sz]e|visuali[sz]ation|histogram)\b", re.IGNORECASE
+)
+# A chart type the user named ("pie chart", "line graph", "histogram") wins over the model's pick.
+_REQUESTED_CHART_TYPE = re.compile(
+    r"\b(bar|line|pie|scatter)\s*(?:chart|graph|plot)\b|\b(histogram)\b", re.IGNORECASE
+)
+_CHART_CORRECTION = (
+    "The user explicitly asked for a chart. Reply again using the chart action only: "
+    '{"action": "chart", "params": "chart_type|x_column|y_column|title"}'
+)
+
+
+def _parse_decision(raw: str):
+    """The model's {"action", "params"} reply → (action, params)."""
+    decision = json.loads(raw.replace("```json", "").replace("```", "").strip())
+    return decision.get("action"), decision.get("params")
+
+
+def _with_requested_chart_type(params, question: str):
+    """'bar|region|total_amount|…' becomes 'pie|…' when the user asked for a pie chart."""
+    match = _REQUESTED_CHART_TYPE.search(question)
+    if not match or not isinstance(params, str) or "|" not in params:
+        return params
+    parts = params.split("|")
+    parts[0] = (match.group(1) or match.group(2)).lower()
+    return "|".join(parts)
 
 
 def _answer_text(raw: str) -> str:
@@ -58,6 +87,7 @@ or
 
 Rules:
 - Use "chart" when user wants visualization/chart/graph/plot
+- If the question mentions a chart, graph, plot or a chart type (bar, line, pie, scatter, histogram), ALWAYS use "chart" — even when it also asks for an average, total or ranking
 - Use "code" for ANY question whose answer depends on the data values: totals, averages, counts, rankings, comparisons, "which/who has the highest", filters, trends
 - Use "answer" ONLY for questions about the dataset's structure (column names, types, what a column means) — never compute or guess numbers in an answer
 - Never add currency symbols ($, ₹, €, £) or currency names unless a column name or the data itself shows that currency
@@ -77,16 +107,24 @@ Rules:
 
         # Step 3 — parse and execute
         try:
-            raw = ask_llm(self.llm, [
-                SystemMessage(content=system),
-                HumanMessage(content=question)
-            ])
-            raw = raw.replace("```json", "").replace("```", "").strip()
-            decision = json.loads(raw)
-            action = decision.get("action")
-            params = decision.get("params")
+            messages = [SystemMessage(content=system), HumanMessage(content=question)]
+            raw = ask_llm(self.llm, messages)
+            action, params = _parse_decision(raw)
+
+            # The user asked for a chart but the model chose a text answer: ask once
+            # more. One extra call, only in this case; if it still won't chart, keep
+            # the original decision so the user at least gets the numbers.
+            if action != "chart" and _ASKS_FOR_CHART.search(question):
+                try:
+                    retry = ask_llm(self.llm, messages + [AIMessage(content=raw), HumanMessage(content=_CHART_CORRECTION)])
+                    retry_action, retry_params = _parse_decision(retry)
+                    if retry_action == "chart":
+                        action, params = retry_action, retry_params
+                except (ValueError, AttributeError, LLMUnavailableError) as e:
+                    print(f"Chart re-ask failed, keeping the original answer: {type(e).__name__}: {e}")
 
             if action == "chart":
+                params = _with_requested_chart_type(params, question)
                 # Repeated categories are summed, unless the question asks for an average.
                 agg = "mean" if _ASKS_FOR_AVERAGE.search(question) else "sum"
                 result = self.chart_gen.func(params, agg=agg)
@@ -105,6 +143,8 @@ Rules:
                         f"Code result: {result}\n\n"
                         "Answer in 1-2 friendly sentences. "
                         "Mention every label in the code result (e.g. the product or region name) together with its number. "
+                        "If the result lists a value for several categories, keep them in the order given "
+                        "(largest first) and say which category is highest. "
                         "Say exactly what was measured, reading it from the code: groupby + sum means a total "
                         "across all rows in each group; mean means an average; a single row picked with "
                         "idxmax/idxmin/loc means one order or one item — never call a single row a total. "
