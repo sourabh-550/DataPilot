@@ -46,7 +46,7 @@ function applyTheme(chartData, c) {
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
     font: { family: "Inter, system-ui, sans-serif", color: c.text, size: 12 },
-    title: { ...(chartData.layout?.title || {}), font: { color: c.fg, size: 14 }, x: 0, xanchor: "left", pad: { l: 4 } },
+    title: { ...(chartData.layout?.title || {}), font: { color: c.fg, size: 14 }, x: 0, xanchor: "left", pad: { l: 12 } },
     margin: { t: 44, l: 48, r: 16, b: 44 },
     legend: { bgcolor: "rgba(0,0,0,0)", font: { color: c.text, size: 11 } },
     hoverlabel: { bgcolor: c.panel, bordercolor: c.grid, font: { color: c.fg, family: "Inter, system-ui, sans-serif", size: 12 } },
@@ -139,10 +139,15 @@ export default function ChartViewer({ chartJson }) {
         )}
 
         <div
-          ref={plotRef}
           style={{ width: "100%", height: fullscreen ? "calc(100% - 36px)" : "340px" }}
           className={`flex-1 transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
-        />
+        >
+          {/* Plotly adds its own "js-plotly-plot" class to this div, and its CSS
+              (which stacks the chart's SVG layers) depends on it. Never give this
+              div a React className: re-renders would wipe Plotly's class, unstack
+              the layers and push the titles below the visible area. */}
+          <div ref={plotRef} style={{ width: "100%", height: "100%" }} />
+        </div>
       </div>
     </>
   );
