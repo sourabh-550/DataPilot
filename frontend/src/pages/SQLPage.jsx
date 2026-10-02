@@ -1,30 +1,21 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { uploadSQLiteDB, connectSQLDB, sendSQLMessage } from "../services/api";
 import ChartViewer from "../components/ChartViewer";
 import ResultTable from "../components/ResultTable";
-import { useNavigate } from "react-router-dom";
+import MessageContent from "../components/MessageContent";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import {
   Database,
   Upload,
   Plug,
-  Send,
+  ArrowUp,
   Copy,
   Check,
   ChevronRight,
-  Bot,
-  User,
-  Code2,
-  Table2,
-  BarChart3,
-  Zap,
   AlertCircle,
   RotateCcw,
   X,
   Loader2,
-  Terminal,
-  Sparkles,
   ArrowLeft,
 } from "lucide-react";
 
@@ -38,75 +29,53 @@ const SAMPLE_QUERIES = [
 ];
 
 const DB_TYPES = [
-  { value: "mysql", label: "MySQL", icon: "🐬" },
-  { value: "postgresql", label: "PostgreSQL", icon: "🐘" },
-  { value: "mssql", label: "SQL Server", icon: "🔷" },
+  { value: "mysql", label: "MySQL" },
+  { value: "postgresql", label: "PostgreSQL" },
+  { value: "mssql", label: "SQL Server" },
 ];
 
-function ModeSelector({ onSelect }) {
+function ErrorNote({ children }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="flex flex-col items-center justify-center min-h-[60vh] px-4"
-    >
-      <div className="text-center mb-10">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/12 border border-indigo-500/20 mb-5">
-          <Terminal className="w-3.5 h-3.5 text-indigo-400" />
-          <span className="text-xs font-semibold text-indigo-400">SQL Workspace</span>
-        </div>
-        <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-          Connect to your <span className="gradient-text">database</span>
-        </h2>
-        <p className="text-zinc-400 text-base max-w-md">
-          Upload a SQLite database file or connect to your MySQL / PostgreSQL server
-        </p>
-      </div>
+    <div className="flex items-start gap-2 rounded-md border border-negative/25 bg-negative/10 px-3 py-2 text-sm text-negative" role="alert">
+      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+      <span>{children}</span>
+    </div>
+  );
+}
 
-      <div className="grid sm:grid-cols-2 gap-4 w-full max-w-2xl">
-        <motion.button
-          onClick={() => onSelect("upload")}
-          className="glass-card rounded-2xl p-7 text-left group hover:border-indigo-500/30 transition-all"
-          whileHover={{ y: -4, scale: 1.01 }}
-          whileTap={{ scale: 0.98 }}
-        >
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mb-4 shadow-glow-sm group-hover:scale-110 transition-transform">
-            <Upload className="w-6 h-6 text-white" />
-          </div>
-          <h3 className="text-base font-semibold text-white mb-2 group-hover:text-indigo-300 transition-colors">
-            Upload SQLite File
-          </h3>
-          <p className="text-sm text-zinc-500 leading-relaxed">
-            Drop a .db SQLite database file and start querying instantly
-          </p>
-          <div className="flex items-center gap-1 mt-4 text-xs text-zinc-600 group-hover:text-indigo-400 transition-colors">
-            <span>Get started</span>
-            <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </motion.button>
+function BackLink({ onBack }) {
+  return (
+    <button onClick={onBack} className="btn-ghost -ml-2 mb-4 px-2 py-1">
+      <ArrowLeft className="h-4 w-4" />
+      Back
+    </button>
+  );
+}
 
-        <motion.button
-          onClick={() => onSelect("connect")}
-          className="glass-card rounded-2xl p-7 text-left group hover:border-cyan-500/30 transition-all"
-          whileHover={{ y: -4, scale: 1.01 }}
-          whileTap={{ scale: 0.98 }}
-        >
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center mb-4 shadow-glow-cyan group-hover:scale-110 transition-transform">
-            <Plug className="w-6 h-6 text-white" />
-          </div>
-          <h3 className="text-base font-semibold text-white mb-2 group-hover:text-cyan-300 transition-colors">
-            Connect to Database
-          </h3>
-          <p className="text-sm text-zinc-500 leading-relaxed">
-            Connect to MySQL, PostgreSQL, or SQL Server with credentials
-          </p>
-          <div className="flex items-center gap-1 mt-4 text-xs text-zinc-600 group-hover:text-cyan-400 transition-colors">
-            <span>Connect now</span>
-            <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-          </div>
-        </motion.button>
+function ModeSelector({ onSelect }) {
+  const options = [
+    { mode: "upload", icon: Upload, title: "Upload a SQLite file", desc: "Query a .db file in your browser session" },
+    { mode: "connect", icon: Plug, title: "Connect to a database", desc: "MySQL, PostgreSQL or SQL Server" },
+  ];
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
+      <h2 className="text-xl font-semibold text-fg">Connect a database</h2>
+      <p className="mt-1 text-sm text-fg-muted">
+        Ask questions in plain English — DataPilot writes the SQL, runs it read-only, and shows the result.
+      </p>
+      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        {options.map((o) => (
+          <button key={o.mode} onClick={() => onSelect(o.mode)} className="card-hover flex items-start gap-3 p-4 text-left">
+            <o.icon className="mt-0.5 h-5 w-5 shrink-0 text-fg-subtle" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium text-fg">{o.title}</span>
+              <span className="mt-0.5 block text-sm text-fg-muted">{o.desc}</span>
+            </span>
+            <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-fg-subtle" />
+          </button>
+        ))}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -114,53 +83,35 @@ function UploadMode({ onBack, onUpload, loading, error }) {
   const [dragging, setDragging] = useState(false);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="flex flex-col items-center justify-center min-h-[60vh] px-4"
-    >
-      <div className="w-full max-w-md">
-        <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-white mb-6 transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </button>
-
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => { e.preventDefault(); setDragging(false); onUpload(e.dataTransfer.files[0]); }}
-          onClick={() => document.getElementById("dbFileInput").click()}
-          className={`drop-zone p-12 text-center ${dragging ? "dragging" : ""}`}
-        >
-          <motion.div
-            animate={dragging ? { scale: 1.1, rotate: 5 } : { scale: 1, rotate: 0 }}
-            className="mx-auto w-20 h-20 rounded-2xl bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center mb-6"
-          >
-            <Database className="w-10 h-10 text-indigo-400" />
-          </motion.div>
-          <h3 className="text-xl font-bold text-white mb-2">
-            {dragging ? "Drop your .db file" : "Upload SQLite Database"}
-          </h3>
-          <p className="text-zinc-500 text-sm mb-6">Click to browse or drag & drop a .db file</p>
-          <span className="badge-muted font-mono">.db files only</span>
-          <input id="dbFileInput" type="file" accept=".db" className="hidden" onChange={(e) => onUpload(e.target.files[0])} />
-        </div>
-
-        {loading && (
-          <div className="flex items-center gap-3 mt-4 px-4 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-sm">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Connecting to database...
-          </div>
-        )}
-
-        {error && (
-          <div className="flex items-center gap-2 mt-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            {error}
-          </div>
-        )}
+    <div className="mx-auto max-w-xl px-4 py-10 sm:px-6">
+      <BackLink onBack={onBack} />
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => { e.preventDefault(); setDragging(false); onUpload(e.dataTransfer.files[0]); }}
+        onClick={() => document.getElementById("dbFileInput").click()}
+        onKeyDown={(e) => e.key === "Enter" && document.getElementById("dbFileInput").click()}
+        role="button"
+        tabIndex={0}
+        aria-label="Upload a SQLite database file"
+        className={`drop-zone flex flex-col items-center px-6 py-12 text-center ${dragging ? "dragging" : ""}`}
+      >
+        <Database className="h-8 w-8 text-fg-subtle" />
+        <p className="mt-3 text-sm font-medium text-fg">{dragging ? "Drop the .db file" : "Upload a SQLite database"}</p>
+        <p className="mt-1 text-sm text-fg-muted">Drag and drop a .db file, or click to browse</p>
+        <input id="dbFileInput" type="file" accept=".db" className="hidden" onChange={(e) => onUpload(e.target.files[0])} />
       </div>
-    </motion.div>
+
+      <div className="mt-3 space-y-2">
+        {loading && (
+          <p className="flex items-center gap-2 text-sm text-fg-muted" role="status">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Reading database…
+          </p>
+        )}
+        {error && <ErrorNote>{error}</ErrorNote>}
+      </div>
+    </div>
   );
 }
 
@@ -175,82 +126,96 @@ function ConnectMode({ onBack, onConnect, loading, error }) {
   });
 
   const fields = [
-    { key: "host", label: "Host", placeholder: "localhost" },
+    { key: "host", label: "Host", placeholder: "localhost", span: "sm:col-span-2" },
     { key: "port", label: "Port", placeholder: "3306" },
+    { key: "database", label: "Database", placeholder: "my_database" },
     { key: "username", label: "Username", placeholder: "root" },
     { key: "password", label: "Password", placeholder: "••••••••", type: "password" },
-    { key: "database", label: "Database", placeholder: "my_database" },
   ];
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="flex flex-col items-center justify-center min-h-[60vh] px-4 py-8"
-    >
-      <div className="w-full max-w-sm">
-        <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-white mb-6 transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </button>
+    <div className="mx-auto max-w-xl px-4 py-10 sm:px-6">
+      <BackLink onBack={onBack} />
+      <div className="card p-5">
+        <h2 className="text-base font-semibold text-fg">Database connection</h2>
+        <p className="mt-1 text-sm text-fg-muted">Use a read-only database user if you can.</p>
 
-        <div className="card rounded-2xl p-6 space-y-4">
-          <h3 className="text-base font-semibold text-white mb-2">Database Connection</h3>
+        <div className="mt-4 inline-flex rounded-md border border-line bg-sunken p-0.5" role="radiogroup" aria-label="Database type">
+          {DB_TYPES.map((db) => (
+            <button
+              key={db.value}
+              role="radio"
+              aria-checked={form.connection_type === db.value}
+              onClick={() => setForm({ ...form, connection_type: db.value })}
+              className={`rounded px-3 py-1 text-sm transition-colors ${
+                form.connection_type === db.value ? "bg-panel font-medium text-fg shadow-xs" : "text-fg-muted hover:text-fg"
+              }`}
+            >
+              {db.label}
+            </button>
+          ))}
+        </div>
 
-          <div className="grid grid-cols-3 gap-2 p-1 bg-zinc-900 rounded-xl">
-            {DB_TYPES.map((db) => (
-              <button
-                key={db.value}
-                onClick={() => setForm({ ...form, connection_type: db.value })}
-                className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${
-                  form.connection_type === db.value
-                    ? "bg-indigo-600 text-white"
-                    : "text-zinc-500 hover:text-zinc-300"
-                }`}
-              >
-                <span className="mr-1">{db.icon}</span>{db.label}
-              </button>
-            ))}
-          </div>
-
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {fields.map((f) => (
-            <div key={f.key}>
-              <label className="text-xs font-medium text-zinc-400 mb-1.5 block">{f.label}</label>
+            <label key={f.key} className={`block ${f.span || ""}`}>
+              <span className="mb-1 block text-xs font-medium text-fg-muted">{f.label}</span>
               <input
                 type={f.type || "text"}
                 placeholder={f.placeholder}
                 value={form[f.key]}
                 onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
-                className="input-field py-2.5"
+                className="input-field"
               />
-            </div>
+            </label>
           ))}
+        </div>
 
-          <motion.button
+        {error && <div className="mt-4"><ErrorNote>{error}</ErrorNote></div>}
+
+        <div className="mt-5 flex justify-end">
+          <button
             onClick={() => onConnect({ ...form, port: form.port ? parseInt(form.port) : undefined })}
             disabled={loading}
-            className="btn-primary w-full rounded-2xl gap-2"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
+            className="btn-primary"
           >
-            {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Connecting...</> : <><Plug className="w-4 h-4" />Connect</>}
-          </motion.button>
-
-          {error && (
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              {error}
-            </div>
-          )}
+            {loading ? <><Loader2 className="h-4 w-4 animate-spin" />Connecting…</> : <><Plug className="h-4 w-4" />Connect</>}
+          </button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
-function SQLMessage({ msg, index }) {
+// Failed queries the backend sent back to the LLM before it found one that ran.
+function CorrectionAttempts({ attempts, fixed }) {
+  const n = attempts.length;
+  return (
+    <div className="overflow-hidden rounded-lg border border-line bg-panel">
+      <div className="flex items-center gap-2 border-b border-line bg-sunken px-3 py-2 text-xs font-medium text-fg">
+        <RotateCcw className="h-3.5 w-3.5 text-warning" />
+        {fixed
+          ? `Self-corrected after ${n} failed attempt${n > 1 ? "s" : ""}`
+          : `${n} attempt${n > 1 ? "s" : ""} failed`}
+      </div>
+      <ol className="divide-y divide-line">
+        {attempts.map((attempt, i) => (
+          <li key={i} className="space-y-1 px-3 py-2">
+            <p className="text-xs text-fg-muted">
+              <span className="font-medium text-fg">Attempt {i + 1}</span>
+              <span className="text-fg-subtle"> · </span>
+              <span className="font-mono text-negative">{attempt.error}</span>
+            </p>
+            <pre className="whitespace-pre-wrap break-all font-mono text-2xs text-fg-subtle">{attempt.sql}</pre>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function SQLMessage({ msg }) {
   const [copiedSQL, setCopiedSQL] = useState(false);
-  const isUser = msg.role === "user";
 
   const copySQL = () => {
     navigator.clipboard.writeText(msg.sql);
@@ -258,102 +223,107 @@ function SQLMessage({ msg, index }) {
     setTimeout(() => setCopiedSQL(false), 2000);
   };
 
+  if (msg.role === "user") {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-lg border border-line bg-sunken px-3 py-2 text-sm text-fg sm:max-w-[75%]">
+          {msg.content}
+        </div>
+      </div>
+    );
+  }
+
+  const attempts = msg.attempts || [];
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.04, 0.15) }}
-      className={`flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}
-    >
-      {/* Avatar */}
-      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-        isUser
-          ? "bg-zinc-800 border border-zinc-700"
-          : "bg-gradient-to-br from-indigo-500 to-violet-600 shadow-glow-sm"
-      }`}>
-        {isUser ? <User className="w-4 h-4 text-zinc-400" /> : <Bot className="w-4 h-4 text-white" />}
+    <div className="min-w-0 space-y-3">
+      {msg.content && <MessageContent content={msg.content} />}
+
+      {attempts.length > 0 && <CorrectionAttempts attempts={attempts} fixed={Boolean(msg.table)} />}
+
+      {msg.sql && (
+        <div className="overflow-hidden rounded-lg border border-line">
+          <div className="flex h-9 items-center justify-between border-b border-line bg-sunken pl-3 pr-1.5">
+            <span className="text-xs font-medium text-fg-muted">
+              SQL{attempts.length > 0 && msg.table ? ` · attempt ${attempts.length + 1}` : ""}
+            </span>
+            <button onClick={copySQL} className="btn-ghost h-7 px-2 py-0 text-xs">
+              {copiedSQL ? <><Check className="h-3.5 w-3.5 text-positive" />Copied</> : <><Copy className="h-3.5 w-3.5" />Copy</>}
+            </button>
+          </div>
+          <pre className="overflow-x-auto bg-panel p-3 font-mono text-xs leading-relaxed text-fg">{msg.sql}</pre>
+        </div>
+      )}
+
+      {msg.table && (
+        <div className="overflow-hidden rounded-lg border border-line">
+          <div className="flex h-9 items-center justify-between border-b border-line bg-sunken px-3">
+            <span className="text-xs font-medium text-fg-muted">Results</span>
+            <span className="text-xs tabular-nums text-fg-subtle">
+              {msg.table.rows?.length.toLocaleString()} row{msg.table.rows?.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <div className="max-h-72 overflow-auto bg-panel">
+            <ResultTable columns={msg.table.columns} rows={msg.table.rows} />
+          </div>
+        </div>
+      )}
+
+      {msg.chart && <ChartViewer chartJson={msg.chart} />}
+    </div>
+  );
+}
+
+function SchemaPanel({ dbName, tables, schema, onDisconnect, onPickQuery }) {
+  return (
+    <aside className="hidden w-64 shrink-0 flex-col overflow-hidden border-r border-line bg-canvas lg:flex">
+      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3">
+        <Database className="h-4 w-4 shrink-0 text-fg-subtle" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-fg" title={dbName}>{dbName}</p>
+        </div>
+        <button onClick={onDisconnect} className="btn-icon h-7 w-7" title="Disconnect" aria-label="Disconnect">
+          <X className="h-3.5 w-3.5" />
+        </button>
       </div>
 
-      <div className={`max-w-[80%] space-y-2 ${isUser ? "" : "flex-1"}`}>
-        {isUser ? (
-          <div className="bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-2xl rounded-tr-md px-4 py-3">
-            <p className="text-sm">{msg.content}</p>
+      <div className="flex-1 space-y-5 overflow-y-auto p-3">
+        <div>
+          <p className="section-label mb-2 px-1">Schema · {tables.length} table{tables.length === 1 ? "" : "s"}</p>
+          <div className="space-y-2">
+            {tables.map((table) => (
+              <div key={table} className="card">
+                <p className="border-b border-line px-3 py-1.5 font-mono text-xs font-medium text-fg">{table}</p>
+                <ul className="px-3 py-1.5">
+                  {schema[table]?.columns.map((col) => (
+                    <li key={col.name} className="flex items-center justify-between gap-2 py-0.5">
+                      <span className="truncate font-mono text-2xs text-fg-muted">{col.name}</span>
+                      <span className="shrink-0 font-mono text-2xs text-fg-subtle">{col.type}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
-        ) : (
-          <>
-            {msg.content && (
-              <div className="glass-card rounded-2xl rounded-tl-md px-4 py-3">
-                <p className="text-sm text-zinc-300 leading-relaxed">{msg.content}</p>
-              </div>
-            )}
-            {msg.attempts?.length > 0 && (
-              <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-medium text-amber-300">
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  {msg.table
-                    ? `Self-corrected: ${msg.attempts.length} failed attempt${msg.attempts.length > 1 ? "s" : ""} → fixed`
-                    : `${msg.attempts.length} attempt${msg.attempts.length > 1 ? "s" : ""} failed`}
-                </div>
-                {msg.attempts.map((attempt, i) => (
-                  <div key={i} className="space-y-1">
-                    <p className="text-xs text-zinc-400">
-                      Attempt {i + 1} failed: <span className="text-red-400">{attempt.error}</span>
-                    </p>
-                    <code className="block text-[11px] font-mono text-zinc-500 whitespace-pre-wrap break-all">
-                      {attempt.sql}
-                    </code>
-                  </div>
-                ))}
-              </div>
-            )}
-            {msg.sql && (
-              <div className="relative rounded-2xl overflow-hidden border border-zinc-800">
-                <div className="flex items-center justify-between px-4 py-2 bg-zinc-900 border-b border-zinc-800">
-                  <div className="flex items-center gap-2">
-                    <Code2 className="w-3.5 h-3.5 text-indigo-400" />
-                    <span className="text-xs font-medium text-zinc-400">
-                      Generated SQL{msg.attempts?.length > 0 && msg.table ? ` (attempt ${msg.attempts.length + 1})` : ""}
-                    </span>
-                  </div>
-                  <button onClick={copySQL} className="btn-ghost p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 text-xs gap-1">
-                    {copiedSQL ? <><Check className="w-3 h-3 text-emerald-400" />Copied</> : <><Copy className="w-3 h-3" />Copy</>}
-                  </button>
-                </div>
-                <div className="code-block rounded-none border-0">
-                  <code className="text-emerald-300 text-xs leading-relaxed">{msg.sql}</code>
-                </div>
-              </div>
-            )}
-            {msg.table && (
-              <div className="rounded-2xl overflow-hidden border border-zinc-800">
-                <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border-b border-zinc-800">
-                  <Table2 className="w-3.5 h-3.5 text-cyan-400" />
-                  <span className="text-xs font-medium text-zinc-400">Query Results</span>
-                  <span className="badge-cyan ml-auto text-[10px]">{msg.table.rows?.length} rows</span>
-                </div>
-                <div className="overflow-x-auto scrollbar-thin max-h-64">
-                  <ResultTable columns={msg.table.columns} rows={msg.table.rows} />
-                </div>
-              </div>
-            )}
-            {msg.chart && (
-              <div className="rounded-2xl overflow-hidden border border-zinc-800">
-                <div className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border-b border-zinc-800">
-                  <BarChart3 className="w-3.5 h-3.5 text-violet-400" />
-                  <span className="text-xs font-medium text-zinc-400">Visualization</span>
-                </div>
-                <ChartViewer chartJson={msg.chart} />
-              </div>
-            )}
-          </>
-        )}
+        </div>
+
+        <div>
+          <p className="section-label mb-1 px-1">Example questions</p>
+          {SAMPLE_QUERIES.map((q) => (
+            <button
+              key={q}
+              onClick={() => onPickQuery(q)}
+              className="w-full rounded-md px-2 py-1.5 text-left text-sm text-fg-muted transition-colors hover:bg-sunken hover:text-fg"
+            >
+              {q}
+            </button>
+          ))}
+        </div>
       </div>
-    </motion.div>
+    </aside>
   );
 }
 
 export default function SQLPage() {
-  const navigate = useNavigate();
   const [mode, setMode] = useState(null);
   const [sessionId, setSessionId] = useState(null);
   const [schema, setSchema] = useState(null);
@@ -364,6 +334,12 @@ export default function SQLPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+
+  const connectedMessage = (data) => ({
+    role: "assistant",
+    content: `Connected to **${data.db_name}**. Found ${data.table_count} table${data.table_count === 1 ? "" : "s"}: ${data.tables.join(", ")}.`,
+    sql: null, table: null, chart: null,
+  });
 
   const handleDBUpload = async (file) => {
     if (!file || !file.name.endsWith(".db")) {
@@ -378,11 +354,7 @@ export default function SQLPage() {
       setSchema(data.schema);
       setTables(data.tables);
       setDbName(data.db_name);
-      setMessages([{
-        role: "assistant",
-        content: `Connected to **${data.db_name}** 🎉 Found ${data.table_count} tables: ${data.tables.join(", ")}. Ask me anything!`,
-        sql: null, table: null, chart: null,
-      }]);
+      setMessages([connectedMessage(data)]);
     } catch {
       setError("Failed to upload database. Please try again.");
     } finally {
@@ -399,11 +371,7 @@ export default function SQLPage() {
       setSchema(data.schema);
       setTables(data.tables);
       setDbName(data.db_name);
-      setMessages([{
-        role: "assistant",
-        content: `Connected to **${data.db_name}** 🎉 Found ${data.table_count} tables: ${data.tables.join(", ")}. Ask me anything!`,
-        sql: null, table: null, chart: null,
-      }]);
+      setMessages([connectedMessage(data)]);
     } catch {
       setError("Connection failed. Please check your credentials.");
     } finally {
@@ -441,146 +409,96 @@ export default function SQLPage() {
   // ── Pre-connection screens ──────────────────────────────────────
   if (!sessionId) {
     return (
-      <DashboardLayout title="SQL Workspace" subtitle="Chat with your database using natural language">
-        <div className="max-w-4xl mx-auto">
-          <AnimatePresence mode="wait">
-            {!mode && <ModeSelector key="select" onSelect={setMode} />}
-            {mode === "upload" && (
-              <UploadMode
-                key="upload"
-                onBack={() => { setMode(null); setError(null); }}
-                onUpload={handleDBUpload}
-                loading={loading}
-                error={error}
-              />
-            )}
-            {mode === "connect" && (
-              <ConnectMode
-                key="connect"
-                onBack={() => { setMode(null); setError(null); }}
-                onConnect={handleConnect}
-                loading={loading}
-                error={error}
-              />
-            )}
-          </AnimatePresence>
-        </div>
+      <DashboardLayout title="SQL workspace" subtitle="Ask questions about a database in plain English">
+        {!mode && <ModeSelector onSelect={setMode} />}
+        {mode === "upload" && (
+          <UploadMode
+            onBack={() => { setMode(null); setError(null); }}
+            onUpload={handleDBUpload}
+            loading={loading}
+            error={error}
+          />
+        )}
+        {mode === "connect" && (
+          <ConnectMode
+            onBack={() => { setMode(null); setError(null); }}
+            onConnect={handleConnect}
+            loading={loading}
+            error={error}
+          />
+        )}
       </DashboardLayout>
     );
   }
 
-  // ── Connected Chat Interface ────────────────────────────────────
+  // ── Connected ────────────────────────────────────────────────────
   return (
-    <DashboardLayout title={`SQL · ${dbName}`} subtitle={`${tables.length} tables connected`}>
-      <div className="h-[calc(100vh-57px)] flex overflow-hidden">
+    <DashboardLayout title={`SQL · ${dbName}`} subtitle={`${tables.length} table${tables.length === 1 ? "" : "s"}`}>
+      <div className="flex h-full overflow-hidden">
+        <SchemaPanel
+          dbName={dbName}
+          tables={tables}
+          schema={schema}
+          onDisconnect={() => { setSessionId(null); setMode(null); }}
+          onPickQuery={setInput}
+        />
 
-        {/* Schema Sidebar */}
-        <div className="hidden lg:flex flex-col w-64 shrink-0 border-r border-zinc-800/60 overflow-y-auto scrollbar-thin">
-          {/* DB Info */}
-          <div className="p-4 border-b border-zinc-800/60">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center">
-                <Database className="w-4 h-4 text-indigo-400" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white">{dbName}</p>
-                <p className="text-xs text-zinc-500">{tables.length} tables</p>
-              </div>
-              <button
-                onClick={() => { setSessionId(null); setMode(null); }}
-                className="ml-auto btn-ghost p-1.5 rounded-lg text-zinc-600 hover:text-zinc-400"
-                title="Disconnect"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Schema */}
-          <div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-3">
-            <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider">Schema</p>
-            {tables.map((table) => (
-              <div key={table} className="card rounded-xl p-3">
-                <p className="text-xs font-semibold text-indigo-400 mb-2 flex items-center gap-1.5">
-                  <Table2 className="w-3 h-3" />
-                  {table}
-                </p>
-                <div className="space-y-1">
-                  {schema[table]?.columns.map((col) => (
-                    <div key={col.name} className="flex items-center justify-between">
-                      <span className="text-xs text-zinc-400">{col.name}</span>
-                      <span className="text-[10px] text-cyan-400 font-mono bg-cyan-500/10 px-1.5 py-0.5 rounded-md">{col.type}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-
-            {/* Sample Queries */}
-            <div className="mt-4">
-              <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider mb-2">Try Asking</p>
-              {SAMPLE_QUERIES.map((q) => (
-                <button
-                  key={q}
-                  onClick={() => setInput(q)}
-                  className="w-full text-left text-xs text-zinc-500 hover:text-white px-2.5 py-2 rounded-lg hover:bg-zinc-800/60 transition-all mb-1 flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-3 h-3 text-indigo-400 shrink-0" />
-                  {q}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Chat Panel */}
-        <div className="flex-1 flex flex-col min-w-0 p-4 sm:p-6 overflow-hidden">
+        <div className="flex min-w-0 flex-1 flex-col">
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto scrollbar-thin space-y-4 pb-4">
-            {messages.map((msg, i) => (
-              <SQLMessage key={i} msg={msg} index={i} />
-            ))}
-            <AnimatePresence>
-              {chatLoading && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="flex gap-3"
-                >
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-glow-sm">
-                    <Bot className="w-4 h-4 text-white" />
+          <div className="flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:px-6">
+              {messages.map((msg, i) => (
+                <SQLMessage key={i} msg={msg} />
+              ))}
+
+              {/* Example questions inline when the schema panel is hidden (below lg) */}
+              {messages.length === 1 && (
+                <div className="lg:hidden">
+                  <p className="section-label mb-2">Example questions</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {SAMPLE_QUERIES.map((q) => (
+                      <button
+                        key={q}
+                        onClick={() => setInput(q)}
+                        className="rounded-md border border-line bg-panel px-3 py-2 text-left text-sm text-fg-muted transition-colors hover:border-line-strong hover:text-fg"
+                      >
+                        {q}
+                      </button>
+                    ))}
                   </div>
-                  <div className="glass-card rounded-2xl rounded-tl-md px-5 py-4">
-                    <div className="flex items-center gap-1.5">
-                      <Loader2 className="w-3.5 h-3.5 text-indigo-400 animate-spin" />
-                      <span className="text-xs text-zinc-500">Generating SQL...</span>
-                    </div>
-                  </div>
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>
+
+              {chatLoading && (
+                <p className="flex items-center gap-2 text-sm text-fg-subtle" role="status">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Writing and running SQL…
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Input */}
-          <div className="pt-4 border-t border-zinc-800/60 flex gap-3">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Ask anything about your database in plain English..."
-              className="input-field flex-1"
-            />
-            <motion.button
-              onClick={handleSend}
-              disabled={chatLoading || !input.trim()}
-              className="btn-primary !px-4 !py-3 shrink-0 rounded-2xl"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Send className="w-4 h-4" />
-            </motion.button>
+          <div className="shrink-0 border-t border-line bg-panel">
+            <div className="mx-auto flex max-w-4xl gap-2 px-4 py-3 sm:px-6">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                placeholder="Ask a question about your database"
+                className="input-field flex-1"
+                aria-label="SQL question"
+              />
+              <button
+                onClick={handleSend}
+                disabled={chatLoading || !input.trim()}
+                className="btn-primary h-10 w-10 shrink-0 !p-0"
+                aria-label="Send"
+              >
+                <ArrowUp className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

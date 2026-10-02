@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, XCircle, Info, X, Sparkles } from "lucide-react";
+import { CheckCircle2, XCircle, Info, X } from "lucide-react";
 
 const ToastContext = createContext(null);
 let toastId = 0;
@@ -28,41 +28,18 @@ export function ToastProvider({ children }) {
   );
 }
 
+// Neutral panel for every type; only the icon carries the status colour.
 const TOAST_CONFIG = {
-  success: {
-    icon: CheckCircle2,
-    border: "border-emerald-500/30",
-    bg: "bg-emerald-500/10",
-    text: "text-emerald-300",
-    iconColor: "text-emerald-400",
-  },
-  error: {
-    icon: XCircle,
-    border: "border-red-500/30",
-    bg: "bg-red-500/10",
-    text: "text-red-300",
-    iconColor: "text-red-400",
-  },
-  info: {
-    icon: Info,
-    border: "border-indigo-500/30",
-    bg: "bg-indigo-500/10",
-    text: "text-indigo-300",
-    iconColor: "text-indigo-400",
-  },
-  ai: {
-    icon: Sparkles,
-    border: "border-violet-500/30",
-    bg: "bg-violet-500/10",
-    text: "text-violet-300",
-    iconColor: "text-violet-400",
-  },
+  success: { icon: CheckCircle2, iconColor: "text-positive" },
+  error: { icon: XCircle, iconColor: "text-negative" },
+  info: { icon: Info, iconColor: "text-accent-text" },
 };
+TOAST_CONFIG.ai = TOAST_CONFIG.info; // legacy type name
 
 function ToastContainer({ toasts, onDismiss }) {
   return (
     <div
-      className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 max-w-sm w-full sm:max-w-sm pointer-events-none"
+      className="pointer-events-none fixed bottom-4 left-4 right-4 z-[100] flex flex-col items-end gap-2 sm:left-auto"
       role="region"
       aria-label="Notifications"
     >
@@ -73,21 +50,21 @@ function ToastContainer({ toasts, onDismiss }) {
           return (
             <motion.div
               key={toast.id}
-              initial={{ opacity: 0, x: 40, scale: 0.95 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 40, scale: 0.95 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className={`glass-strong rounded-2xl px-4 py-3.5 border shadow-card flex items-start gap-3 pointer-events-auto ${config.border} ${config.bg}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="pointer-events-auto flex w-full items-start gap-2.5 rounded-lg border border-line bg-panel px-3 py-2.5 shadow-popover sm:w-80"
               role="alert"
             >
-              <Icon className={`w-4 h-4 shrink-0 mt-0.5 ${config.iconColor}`} />
-              <p className={`text-sm flex-1 font-medium ${config.text}`}>{toast.message}</p>
+              <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${config.iconColor}`} />
+              <p className="flex-1 text-sm text-fg">{toast.message}</p>
               <button
                 onClick={() => onDismiss(toast.id)}
-                className="text-zinc-600 hover:text-zinc-400 transition-colors shrink-0 p-0.5"
+                className="shrink-0 rounded p-0.5 text-fg-subtle transition-colors hover:text-fg"
                 aria-label="Dismiss"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </motion.div>
           );

@@ -1,8 +1,65 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Download, Maximize2, X } from "lucide-react";
+import { useTheme } from "../context/ThemeContext";
+
+// Reads the current theme's tokens (see index.css) so charts match light/dark.
+function themeColors() {
+  const css = getComputedStyle(document.documentElement);
+  const rgb = (name) => `rgb(${css.getPropertyValue(name).trim().split(/\s+/).join(",")})`;
+  return {
+    palette: Array.from({ length: 8 }, (_, i) => css.getPropertyValue(`--chart-${i + 1}`).trim()),
+    text: rgb("--fg-muted"),
+    subtle: rgb("--fg-subtle"),
+    grid: rgb("--line"),
+    panel: rgb("--panel"),
+    fg: rgb("--fg"),
+  };
+}
+
+// The backend's Plotly Express figures carry Plotly's default template, which
+// writes default colours into each trace. Drop the template and single-colour
+// trace values so our validated palette (layout.colorway) applies in order.
+// Arrays are left alone — they encode data, not series identity.
+function applyTheme(chartData, c) {
+  const data = (chartData.data || []).map((trace) => {
+    const t = { ...trace };
+    if (t.marker && typeof t.marker.color === "string") t.marker = { ...t.marker, color: undefined };
+    if (t.line && typeof t.line.color === "string") t.line = { ...t.line, color: undefined };
+    return t;
+  });
+
+  const axis = (a = {}) => ({
+    ...a,
+    gridcolor: c.grid,
+    linecolor: c.grid,
+    zerolinecolor: c.grid,
+    tickfont: { color: c.subtle, size: 11 },
+    title: { ...(a.title || {}), font: { color: c.text, size: 12 } },
+    automargin: true,
+  });
+
+  const layout = {
+    ...chartData.layout,
+    template: undefined,
+    colorway: c.palette,
+    piecolorway: c.palette,
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)",
+    font: { family: "Inter, system-ui, sans-serif", color: c.text, size: 12 },
+    title: { ...(chartData.layout?.title || {}), font: { color: c.fg, size: 14 }, x: 0, xanchor: "left", pad: { l: 4 } },
+    margin: { t: 44, l: 48, r: 16, b: 44 },
+    legend: { bgcolor: "rgba(0,0,0,0)", font: { color: c.text, size: 11 } },
+    hoverlabel: { bgcolor: c.panel, bordercolor: c.grid, font: { color: c.fg, family: "Inter, system-ui, sans-serif", size: 12 } },
+    bargap: 0.3,
+    barcornerradius: 4,
+    xaxis: axis(chartData.layout?.xaxis),
+    yaxis: axis(chartData.layout?.yaxis),
+  };
+  return { data, layout };
+}
 
 export default function ChartViewer({ chartJson }) {
+  const { theme } = useTheme();
   const plotRef = useRef(null);
   const plotlyRef = useRef(null);
   const [fullscreen, setFullscreen] = useState(false);
@@ -11,49 +68,24 @@ export default function ChartViewer({ chartJson }) {
   const renderChart = useCallback((element) => {
     if (!chartJson || !element) return;
     try {
-      const chartData = JSON.parse(chartJson);
+      const { data, layout } = applyTheme(JSON.parse(chartJson), themeColors());
       import("plotly.js-dist-min").then((Plotly) => {
         plotlyRef.current = Plotly;
-        Plotly.newPlot(
-          element,
-          chartData.data,
-          {
-            ...chartData.layout,
-            paper_bgcolor: "transparent",
-            plot_bgcolor: "transparent",
-            font: { color: "#A1A1AA", family: "Inter, system-ui, sans-serif", size: 12 },
-            margin: { t: 48, l: 52, r: 20, b: 52 },
-            legend: {
-              bgcolor: "transparent",
-              font: { color: "#71717A", size: 11 },
-            },
-            xaxis: {
-              gridcolor: "rgba(63,63,70,0.4)",
-              linecolor: "rgba(63,63,70,0.3)",
-              tickcolor: "rgba(63,63,70,0.3)",
-              ...chartData.layout?.xaxis,
-            },
-            yaxis: {
-              gridcolor: "rgba(63,63,70,0.4)",
-              linecolor: "rgba(63,63,70,0.3)",
-              tickcolor: "rgba(63,63,70,0.3)",
-              ...chartData.layout?.yaxis,
-            },
-          },
-          { responsive: true, displayModeBar: false }
-        ).then(() => setLoaded(true));
+        Plotly.newPlot(element, data, layout, { responsive: true, displayModeBar: false })
+          .then(() => setLoaded(true));
       });
     } catch (e) {
       console.error("Chart error:", e);
     }
-  }, [chartJson]);
+    // theme: re-draw with the other palette when the user switches themes
+  }, [chartJson, theme]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    setLoaded(false);
-    renderChart(plotRef.current);
+    const element = plotRef.current;
+    renderChart(element);
     return () => {
-      if (plotRef.current && plotlyRef.current) {
-        plotlyRef.current.purge(plotRef.current);
+      if (element && plotlyRef.current) {
+        plotlyRef.current.purge(element);
       }
     };
   }, [renderChart]);
@@ -78,66 +110,40 @@ export default function ChartViewer({ chartJson }) {
 
   return (
     <>
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className={`relative rounded-2xl overflow-hidden border border-zinc-800/60 bg-zinc-900/50 group ${
-          fullscreen ? "fixed inset-4 sm:inset-8 z-[200] flex flex-col" : "mt-3"
+      {fullscreen && (
+        <div className="fixed inset-0 z-[190] bg-black/40" onClick={() => setFullscreen(false)} />
+      )}
+      <div
+        className={`overflow-hidden rounded-lg border border-line bg-panel ${
+          fullscreen ? "fixed inset-4 z-[200] flex flex-col shadow-popover sm:inset-8" : "relative"
         }`}
       >
-        {fullscreen && (
-          <div
-            className="fixed inset-0 bg-black/85 backdrop-blur-md -z-10"
-            onClick={() => setFullscreen(false)}
-          />
-        )}
-
-        {/* Toolbar */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-800/60">
-          <div className="flex items-center gap-2">
-            <div className="flex gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-red-500/60" />
-              <div className="w-3 h-3 rounded-full bg-amber-500/60" />
-              <div className="w-3 h-3 rounded-full bg-emerald-500/60" />
-            </div>
-            <span className="text-xs text-zinc-500 ml-2">DataPilot Chart</span>
-          </div>
-          <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={handleDownload}
-              className="btn-ghost p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 text-xs gap-1.5 flex items-center"
-              title="Download PNG"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline text-xs">Export</span>
-            </button>
-            <button
-              onClick={() => setFullscreen((f) => !f)}
-              className="btn-ghost p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300"
-              title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
-            >
-              {fullscreen ? <X className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-            </button>
-          </div>
+        <div className="flex h-9 items-center justify-end gap-0.5 border-b border-line px-1.5">
+          <button onClick={handleDownload} className="btn-icon h-7 w-7" title="Download PNG" aria-label="Download chart as PNG">
+            <Download className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => setFullscreen((f) => !f)}
+            className="btn-icon h-7 w-7"
+            title={fullscreen ? "Exit full screen" : "Full screen"}
+            aria-label={fullscreen ? "Exit full screen" : "Full screen"}
+          >
+            {fullscreen ? <X className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+          </button>
         </div>
 
-        {/* Skeleton while loading */}
         {!loaded && (
-          <div className="absolute inset-0 top-10 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-10 h-10 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-              <span className="text-xs text-zinc-500">Rendering chart...</span>
-            </div>
+          <div className="absolute inset-0 top-9 flex items-center justify-center text-xs text-fg-subtle">
+            Rendering chart…
           </div>
         )}
 
         <div
           ref={plotRef}
-          style={{ width: "100%", height: fullscreen ? "calc(100% - 44px)" : "380px" }}
-          className={`flex-1 transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
+          style={{ width: "100%", height: fullscreen ? "calc(100% - 36px)" : "340px" }}
+          className={`flex-1 transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
         />
-      </motion.div>
+      </div>
     </>
   );
 }

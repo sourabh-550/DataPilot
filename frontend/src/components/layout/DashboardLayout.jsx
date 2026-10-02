@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import Sidebar from "./Sidebar";
 import TopNavbar from "./TopNavbar";
 
@@ -7,8 +6,10 @@ export default function DashboardLayout({ children, title, subtitle, sessionId }
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  // App shell: exactly one viewport tall (dvh handles mobile browser bars).
+  // Only <main> scrolls, so the sidebar and top bar always stay in place.
   return (
-    <div className="min-h-screen flex bg-surface">
+    <div className="flex h-dvh overflow-hidden bg-canvas">
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -17,20 +18,15 @@ export default function DashboardLayout({ children, title, subtitle, sessionId }
         currentSessionId={sessionId}
       />
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <TopNavbar
           title={title}
           subtitle={subtitle}
           onMenuClick={() => setSidebarOpen(true)}
         />
-        <motion.main
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, ease: "easeOut" }}
-          className="flex-1 overflow-auto scrollbar-thin"
-        >
+        <main className="flex-1 overflow-auto">
           {children}
-        </motion.main>
+        </main>
       </div>
     </div>
   );

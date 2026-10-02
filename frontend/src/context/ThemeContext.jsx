@@ -3,8 +3,14 @@ import { createContext, useContext, useState, useCallback, useEffect } from "rea
 const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
+  // Light is the default; a saved choice wins. index.html applies the same
+  // rule before first paint, so there's no flash of the wrong theme.
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem("datapilot-theme") || "dark";
+    try {
+      return localStorage.getItem("datapilot-theme") === "dark" ? "dark" : "light";
+    } catch {
+      return "light";
+    }
   });
 
   useEffect(() => {
