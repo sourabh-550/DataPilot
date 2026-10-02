@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { uploadSQLiteDB, connectSQLDB, sendSQLMessage } from "../services/api";
 import ChartViewer from "../components/ChartViewer";
 import ResultTable from "../components/ResultTable";
 import MessageContent from "../components/MessageContent";
 import DashboardLayout from "../components/layout/DashboardLayout";
+import { buildSqlExamples } from "../utils/sqlExamples";
 import {
   Database,
   Upload,
@@ -18,15 +19,6 @@ import {
   Loader2,
   ArrowLeft,
 } from "lucide-react";
-
-const SAMPLE_QUERIES = [
-  "Show all customers from India",
-  "Top 5 products by price",
-  "Total revenue per customer",
-  "How many orders per month?",
-  "Products with stock less than 50",
-  "Average order value by region",
-];
 
 const DB_TYPES = [
   { value: "mysql", label: "MySQL" },
@@ -273,7 +265,7 @@ function SQLMessage({ msg }) {
   );
 }
 
-function SchemaPanel({ dbName, tables, schema, onDisconnect, onPickQuery }) {
+function SchemaPanel({ dbName, tables, schema, examples, onDisconnect, onPickQuery }) {
   return (
     <aside className="hidden w-64 shrink-0 flex-col overflow-hidden border-r border-line bg-canvas lg:flex">
       <div className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3">
@@ -308,7 +300,7 @@ function SchemaPanel({ dbName, tables, schema, onDisconnect, onPickQuery }) {
 
         <div>
           <p className="section-label mb-1 px-1">Example questions</p>
-          {SAMPLE_QUERIES.map((q) => (
+          {examples.map((q) => (
             <button
               key={q}
               onClick={() => onPickQuery(q)}
@@ -327,6 +319,7 @@ export default function SQLPage() {
   const [mode, setMode] = useState(null);
   const [sessionId, setSessionId] = useState(null);
   const [schema, setSchema] = useState(null);
+  const examples = useMemo(() => buildSqlExamples(schema), [schema]);
   const [tables, setTables] = useState([]);
   const [dbName, setDbName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -439,6 +432,7 @@ export default function SQLPage() {
           dbName={dbName}
           tables={tables}
           schema={schema}
+          examples={examples}
           onDisconnect={() => { setSessionId(null); setMode(null); }}
           onPickQuery={setInput}
         />
@@ -456,7 +450,7 @@ export default function SQLPage() {
                 <div className="lg:hidden">
                   <p className="section-label mb-2">Example questions</p>
                   <div className="grid gap-2 sm:grid-cols-2">
-                    {SAMPLE_QUERIES.map((q) => (
+                    {examples.map((q) => (
                       <button
                         key={q}
                         onClick={() => setInput(q)}

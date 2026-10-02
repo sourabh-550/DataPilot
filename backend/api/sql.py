@@ -166,7 +166,7 @@ async def sql_chat(
                 "attempts": attempts,
             }
 
-        answer = f"Query executed successfully. Found {result.get('row_count', 0)} rows."
+        answer = f"Query executed successfully. Found {result.get('row_count', 0):,} rows."
         if attempts:
             answer += f" Self-corrected after {len(attempts)} failed attempt{'s' if len(attempts) > 1 else ''}."
         return {

@@ -47,6 +47,30 @@ def _order_line_x(agg_df: pd.DataFrame, x_col: str) -> pd.DataFrame:
     return agg_df.sort_values(x_col)
 
 
+# A line over more distinct dates than this (e.g. one point per day) is grouped by month.
+_MAX_DATE_POINTS = 31
+
+
+def _by_month(df: pd.DataFrame, x_col: str, y_col: str, agg: str):
+    """
+    Daily dates → one point per month (sum, or mean for "average" questions), so a
+    trend line isn't a jagged point-per-day. None when x isn't dates, or isn't dense.
+    """
+    if pd.api.types.is_numeric_dtype(df[x_col]):  # years, IDs — to_datetime would read them as epoch times
+        return None
+    dates = pd.to_datetime(df[x_col], errors="coerce", format="mixed")
+    if dates.notna().mean() <= 0.9 or dates.nunique() <= _MAX_DATE_POINTS:
+        return None
+    if getattr(dates.dt, "tz", None) is not None:
+        dates = dates.dt.tz_localize(None)
+    months = dates.dt.to_period("M")
+    if months.nunique() < 2:
+        return None
+    monthly = df.assign(_month=months).dropna(subset=["_month"]).groupby("_month")[y_col].agg(agg)
+    monthly.index = monthly.index.to_timestamp()  # a real date axis, labelled "Jan 2025"
+    return monthly.rename_axis(x_col).reset_index()
+
+
 def create_chart_gen_tool(df: pd.DataFrame) -> StructuredTool:
 
     def chart_gen(chart_request: str, agg: str = "sum") -> str:
@@ -95,7 +119,14 @@ def create_chart_gen_tool(df: pd.DataFrame) -> StructuredTool:
                 )
 
             elif chart_type in ("bar", "line"):
-                if df[x_col].duplicated().any():
+                monthly = _by_month(df, x_col, y_col, agg) if chart_type == "line" else None
+                x_hover = "%{x}"
+                if monthly is not None:
+                    plot_df = monthly
+                    y_label = value_label(y_col, agg)
+                    x_label = "Month"
+                    x_hover = "%{x|%b %Y}"
+                elif df[x_col].duplicated().any():
                     # One value per category: sum by default, mean for "average" questions.
                     plot_df = df.groupby(x_col, dropna=False)[y_col].agg(agg).reset_index()
                     y_label = value_label(y_col, agg)
@@ -107,14 +138,17 @@ def create_chart_gen_tool(df: pd.DataFrame) -> StructuredTool:
                     plot_df = plot_df.sort_values(y_col, ascending=False)
                     fig = px.bar(plot_df, x=x_col, y=y_col, title=title or f"{y_label} by {_lower_first(x_label)}")
                 else:
-                    plot_df = _order_line_x(plot_df, x_col)
+                    if monthly is None:
+                        plot_df = _order_line_x(plot_df, x_col)
                     fig = px.line(plot_df, x=x_col, y=y_col, title=title or f"{y_label} by {_lower_first(x_label)}", markers=True)
 
                 fmt = _number_format(plot_df[y_col])
-                fig.update_traces(hovertemplate=f"%{{x}}<br>{y_label}: %{{y:{fmt}}}<extra></extra>")
+                fig.update_traces(hovertemplate=f"{x_hover}<br>{y_label}: %{{y:{fmt}}}<extra></extra>")
                 fig.update_layout(xaxis_title=x_label, yaxis_title=y_label, yaxis_tickformat=",")
                 if chart_type == "bar":
                     fig.update_xaxes(type="category")  # keep the value order, even for numeric-looking x
+                elif monthly is not None:
+                    fig.update_xaxes(tickformat="%b %Y")
 
             elif chart_type == "scatter":
                 fig = px.scatter(df, x=x_col, y=y_col, title=title or f"{readable(y_col)} vs {_lower_first(x_label)}")

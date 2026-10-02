@@ -1,13 +1,13 @@
 import datetime
 import json
 import math
+import re
 from decimal import Decimal
 
 import pandas as pd
-import plotly.express as px
-import plotly
 from langchain.tools import StructuredTool
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from agent.tools.chart_gen import create_chart_gen_tool
 from services.llm import get_llm, ask_llm
 
 # Module-level LLM instance — shared across all SQL tool calls. JSON mode
@@ -61,6 +61,41 @@ def _json_cell(value):
     return value
 
 
+# Auto-charts are for aggregates ("revenue per region"), not row dumps (SELECT * ... LIMIT 100).
+_MAX_CHART_ROWS = 30
+_ID_COLUMN = re.compile(r"(^id$|_id$|^id_|[a-z]Id$)", re.IGNORECASE)
+
+
+def _is_measure(series: pd.Series) -> bool:
+    """Numbers, including Decimal columns from PostgreSQL/MySQL (dtype object)."""
+    if pd.api.types.is_bool_dtype(series):
+        return False
+    if pd.api.types.is_numeric_dtype(series):
+        return True
+    values = series.dropna()
+    return len(values) > 0 and all(isinstance(v, Decimal) for v in values)
+
+
+def _chart_columns(df: pd.DataFrame):
+    """
+    (category, measure) when the result looks like an aggregate — exactly one
+    category column with one row per category, plus exactly one numeric measure,
+    in 2..30 rows. ID-like columns (id, customer_id) are never the measure and are
+    ignored otherwise. None means: show the table only.
+    """
+    if not 2 <= len(df) <= _MAX_CHART_ROWS or df.columns.duplicated().any():
+        return None
+    columns = [c for c in df.columns if not _ID_COLUMN.search(str(c))]
+    measures = [c for c in columns if _is_measure(df[c])]
+    categories = [c for c in columns if c not in measures]
+    if len(measures) != 1 or len(categories) != 1:
+        return None
+    category, measure = categories[0], measures[0]
+    if "|" in f"{category}{measure}" or df[category].isna().any() or df[category].duplicated().any():
+        return None
+    return category, measure
+
+
 def create_sql_tool(engine, schema_text: str) -> StructuredTool:
     dialect = engine.dialect.name  # 'sqlite', 'postgresql', 'mysql', 'mssql'
 
@@ -92,26 +127,18 @@ Rules:
         return sql_query.replace("```sql", "").replace("```", "").strip()
 
     def auto_chart(df: pd.DataFrame) -> str:
-        """Auto generates best chart for query result."""
-        if df.empty or len(df.columns) < 2:
+        """A chart only for aggregate-shaped results; anything else is shown as a table only."""
+        columns = _chart_columns(df)
+        if columns is None:
             return None
-
-        try:
-            # Find numeric and text columns
-            num_cols = df.select_dtypes(include=['number']).columns.tolist()
-            str_cols = df.select_dtypes(include=['object']).columns.tolist()
-
-            if str_cols and num_cols:
-                fig = px.bar(
-                    df,
-                    x=str_cols[0],
-                    y=num_cols[0],
-                    title=f"{num_cols[0]} by {str_cols[0]}"
-                )
-                return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-        except Exception:
-            pass
-        return None
+        category, measure = columns
+        plot_df = df[[category, measure]].copy()
+        plot_df[measure] = pd.to_numeric(plot_df[measure])  # Decimal (Postgres/MySQL) → float
+        # Time categories ("2025-01") read left to right as a line; others as bars, largest first.
+        dates = pd.to_datetime(plot_df[category].astype(str), errors="coerce", format="mixed")
+        chart_type = "line" if dates.notna().mean() > 0.9 else "bar"
+        result = create_chart_gen_tool(plot_df).func(f"{chart_type}|{category}|{measure}|")
+        return result.split("CHART_JSON:", 1)[1] if result.startswith("CHART_JSON:") else None
 
     def execute_nl_query(question: str) -> str:
         """

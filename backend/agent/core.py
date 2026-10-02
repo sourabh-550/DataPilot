@@ -3,6 +3,7 @@ from agent.tools.python_exec import create_python_exec_tool
 from agent.tools.data_info import create_data_info_tool
 from agent.tools.chart_gen import create_chart_gen_tool
 from services.llm import get_llm, ask_llm, LLMUnavailableError
+from services.number_format import with_thousands_separators
 import pandas as pd
 import json
 import re
@@ -50,7 +51,9 @@ def _answer_text(raw: str) -> str:
         answer = None
     text = answer if isinstance(answer, str) and answer.strip() else raw
     # The model sometimes emits **bold** despite "no markdown"; the chat UI shows raw asterisks.
-    return re.sub(r"\*\*(.+?)\*\*", r"\1", text).strip()
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text).strip()
+    # The model copies numbers as pandas printed them (224543.85); show them like the charts do.
+    return with_thousands_separators(text)
 
 def create_agent(df: pd.DataFrame, session_id: str):
     return SimpleDataAgent(df, session_id)

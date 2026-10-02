@@ -1,6 +1,7 @@
 import pandas as pd
 from langchain_core.messages import HumanMessage
 from services.llm import get_llm, ask_llm, LLMUnavailableError
+from services.number_format import with_thousands_separators
 import json
 import math
 
@@ -74,7 +75,7 @@ Generate the insights now:"""
         insights = parsed.get("insights") if isinstance(parsed, dict) else parsed
 
         if isinstance(insights, list) and insights:
-            return [str(i) for i in insights[:5]]  # Max 5 insights
+            return [with_thousands_separators(str(i)) for i in insights[:5]]  # Max 5 insights
         return ["Could not generate insights for this dataset."]
 
     except LLMUnavailableError:
