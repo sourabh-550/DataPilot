@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { BarChart3, Eye, EyeOff, Loader2, AlertCircle, Check, UserRound } from "lucide-react";
+import LoginShowcase from "../components/LoginShowcase";
 
 function GoogleLogo() {
   return (
@@ -91,120 +92,128 @@ export default function LoginPage() {
   const isSuccessMessage = error?.includes("Check your email");
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-canvas px-4 py-10">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 flex items-center justify-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-accent text-white">
-            <BarChart3 className="h-4 w-4" />
-          </span>
-          <span className="text-base font-semibold text-fg">DataPilot</span>
-        </div>
+    <div className="grid min-h-dvh bg-canvas lg:grid-cols-2">
+      <LoginShowcase />
 
-        <div className="card p-6">
-          {successState ? (
-            <p className="flex items-center justify-center gap-2 py-6 text-sm text-fg" role="status">
-              <Check className="h-4 w-4 text-positive" />
-              Signed in. Redirecting…
-            </p>
-          ) : (
-            <>
-              <h1 className="text-lg font-semibold text-fg">
-                {isSignup ? "Create your account" : "Sign in to DataPilot"}
-              </h1>
-              <p className="mt-1 text-sm text-fg-muted">
-                Ask questions about your CSV, Excel and SQL data.
+      <div className="flex items-center justify-center px-4 py-10 sm:px-6">
+        <div className="w-full max-w-sm">
+          <div className="mb-6 flex items-center justify-center gap-2 lg:hidden">
+            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-accent text-white">
+              <BarChart3 className="h-4 w-4" />
+            </span>
+            <span className="text-base font-semibold text-fg">DataPilot</span>
+          </div>
+
+          <div className="card p-6">
+            {successState ? (
+              <p className="flex items-center justify-center gap-2 py-6 text-sm text-fg" role="status">
+                <Check className="h-4 w-4 text-positive" />
+                Signed in. Redirecting…
               </p>
+            ) : (
+              <>
+                <h1 className="text-lg font-semibold text-fg">
+                  {isSignup ? "Create your account" : "Sign in to DataPilot"}
+                </h1>
+                <p className="mt-1 text-sm text-fg-muted">
+                  Ask questions about your CSV, Excel and SQL data.
+                </p>
 
-              <div className="mt-5 space-y-2">
-                <button type="button" onClick={handleGoogleLogin} className="btn-secondary w-full">
+                <div className="mt-5 rounded-lg border border-accent/25 bg-accent/5 p-3">
+                  <button type="button" onClick={handleGuestLogin} disabled={guestLoading} className="btn-primary w-full">
+                    {guestLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserRound className="h-4 w-4" />}
+                    Try as guest — no sign-up
+                  </button>
+                  <p className="mt-2 text-center text-xs text-fg-muted">
+                    Opens a private demo account. No email needed.
+                  </p>
+                </div>
+
+                <div className="my-5 flex items-center gap-3" aria-hidden="true">
+                  <div className="h-px flex-1 bg-line" />
+                  <span className="text-xs text-fg-subtle">or sign in</span>
+                  <div className="h-px flex-1 bg-line" />
+                </div>
+
+                <button type="button" onClick={handleGoogleLogin} className="btn-secondary mb-4 w-full">
                   <GoogleLogo />
                   Continue with Google
                 </button>
-                <button type="button" onClick={handleGuestLogin} disabled={guestLoading} className="btn-secondary w-full">
-                  {guestLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserRound className="h-4 w-4" />}
-                  Try as guest — no sign-up
-                </button>
-              </div>
 
-              <div className="my-5 flex items-center gap-3" aria-hidden="true">
-                <div className="h-px flex-1 bg-line" />
-                <span className="text-xs text-fg-subtle">or</span>
-                <div className="h-px flex-1 bg-line" />
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                <label className="block">
-                  <span className="mb-1 block text-xs font-medium text-fg-muted">Email</span>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => { setEmail(e.target.value); if (emailError) setEmailError(""); }}
-                    onBlur={() => email && validateEmail()}
-                    autoComplete="email"
-                    aria-invalid={!!emailError}
-                    aria-describedby={emailError ? "email-error" : undefined}
-                    className={`input-field ${emailError ? "!border-negative focus:!ring-negative/20" : ""}`}
-                  />
-                  {emailError && <span id="email-error" className="mt-1 block text-xs text-negative">{emailError}</span>}
-                </label>
-
-                <label className="block">
-                  <span className="mb-1 block text-xs font-medium text-fg-muted">Password</span>
-                  <span className="relative block">
+                <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-medium text-fg-muted">Email</span>
                     <input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      autoComplete={isSignup ? "new-password" : "current-password"}
-                      className="input-field pr-10"
+                      type="email"
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); if (emailError) setEmailError(""); }}
+                      onBlur={() => email && validateEmail()}
+                      autoComplete="email"
+                      aria-invalid={!!emailError}
+                      aria-describedby={emailError ? "email-error" : undefined}
+                      className={`input-field ${emailError ? "!border-negative focus:!ring-negative/20" : ""}`}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded text-fg-subtle hover:text-fg"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    {emailError && <span id="email-error" className="mt-1 block text-xs text-negative">{emailError}</span>}
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-medium text-fg-muted">Password</span>
+                    <span className="relative block">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        autoComplete={isSignup ? "new-password" : "current-password"}
+                        className="input-field pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded text-fg-subtle hover:text-fg"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </span>
+                  </label>
+
+                  {error && (
+                    <div
+                      className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${
+                        isSuccessMessage
+                          ? "border-positive/25 bg-positive/10 text-positive"
+                          : "border-negative/25 bg-negative/10 text-negative"
+                      }`}
+                      role="alert"
+                      aria-live="polite"
                     >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </span>
-                </label>
+                      {isSuccessMessage
+                        ? <Check className="mt-0.5 h-4 w-4 shrink-0" />
+                        : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />}
+                      <span>{error}</span>
+                    </div>
+                  )}
 
-                {error && (
-                  <div
-                    className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${
-                      isSuccessMessage
-                        ? "border-positive/25 bg-positive/10 text-positive"
-                        : "border-negative/25 bg-negative/10 text-negative"
-                    }`}
-                    role="alert"
-                    aria-live="polite"
-                  >
-                    {isSuccessMessage
-                      ? <Check className="mt-0.5 h-4 w-4 shrink-0" />
-                      : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />}
-                    <span>{error}</span>
-                  </div>
-                )}
+                  <button type="submit" disabled={loading} className="btn-secondary w-full">
+                    {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {loading
+                      ? (isSignup ? "Creating account…" : "Signing in…")
+                      : (isSignup ? "Create account" : "Sign in")}
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
 
-                <button type="submit" disabled={loading} className="btn-primary w-full">
-                  {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {loading
-                    ? (isSignup ? "Creating account…" : "Signing in…")
-                    : (isSignup ? "Create account" : "Sign in")}
-                </button>
-              </form>
-            </>
+          {!successState && (
+            <p className="mt-4 text-center text-sm text-fg-muted">
+              {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
+              <button onClick={switchMode} className="font-medium text-accent-text hover:underline">
+                {isSignup ? "Sign in" : "Sign up"}
+              </button>
+            </p>
           )}
         </div>
-
-        {!successState && (
-          <p className="mt-4 text-center text-sm text-fg-muted">
-            {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
-            <button onClick={switchMode} className="font-medium text-accent-text hover:underline">
-              {isSignup ? "Sign in" : "Sign up"}
-            </button>
-          </p>
-        )}
       </div>
     </div>
   );
